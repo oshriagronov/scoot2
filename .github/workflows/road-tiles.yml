@@ -1,0 +1,84 @@
+# Rebuilds the road-data tiles from fresh OpenStreetMap data every week and
+# publishes them as a static site. See pipeline/README.md for setup.
+#
+# Host: GitHub Pages by default (free for public repositories). Set the repository
+# variable TILES_HOST=cloudflare to publish to Cloudflare Pages instead (free for
+# private repositories too); that also needs the CLOUDFLARE_API_TOKEN and
+# CLOUDFLARE_ACCOUNT_ID secrets and the CLOUDFLARE_PAGES_PROJECT variable.
+name: Road tiles
+
+on:
+  schedule:
+    - cron: '17 3 * * 1' # Mondays 03:17 UTC
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'pipeline/**'
+      - 'src/routing/osmData.ts'
+      - 'src/routing/tiles.ts'
+      - 'src/routing/rules.ts'
+      - 'src/routing/speed.ts'
+      - '.github/workflows/road-tiles.yml'
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: road-tiles
+  cancel-in-progress: false
+
+env:
+  # Region extract from Geofabrik. To cover more countries, add a job per extract
+  # or switch to a larger region.
+  EXTRACT_URL: https://download.geofabrik.de/asia/israel-and-palestine-latest.osm.pbf
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: pipeline/package-lock.json
+
+      - name: Install pipeline dependencies
+        working-directory: pipeline
+        run: npm ci
+
+      - name: Download OpenStreetMap extract
+        run: curl -fsSL --retry 3 -o region.osm.pbf "$EXTRACT_URL"
+
+      - name: Build tiles
+        working-directory: pipeline
+        run: npx tsx build-tiles.ts --input ../region.osm.pbf --out ../site
+
+      - name: Publish to Cloudflare Pages
+        if: vars.TILES_HOST == 'cloudflare'
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy site --project-name=${{ vars.CLOUDFLARE_PAGES_PROJECT }} --branch=main
+
+      - if: vars.TILES_HOST != 'cloudflare'
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: site
+
+  deploy:
+    if: vars.TILES_HOST != 'cloudflare'
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5

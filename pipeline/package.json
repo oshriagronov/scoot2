@@ -1,0 +1,18 @@
+{
+  "name": "scoot2-tiles",
+  "private": true,
+  "type": "module",
+  "description": "Builds the road-data tiles the app routes on, from an OpenStreetMap extract.",
+  "scripts": {
+    "build-tiles": "tsx build-tiles.ts",
+    "typecheck": "tsc -p ."
+  },
+  "dependencies": {
+    "osm-pbf-parser-node": "^1.1.4"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.4",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  }
+}

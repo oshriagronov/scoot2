@@ -1,13 +1,14 @@
 {
   "expo": {
-    "name": "scoot2",
+    "name": "Scoot2",
     "slug": "scoot2",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.scoot2.app"
     },
     "android": {
       "adaptiveIcon": {
@@ -16,10 +17,29 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.scoot2.app",
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-status-bar",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Scoot2 uses your location to guide you along roads and lanes where scooters and e-bikes are allowed."
+        }
+      ]
+    ],
+    "scheme": "scoot2",
+    "experiments": {
+      "typedRoutes": true
     }
   }
 }

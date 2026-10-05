@@ -1,6 +1,6 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import {
   formatDistanceShort,
   formatDuration,
@@ -97,6 +97,8 @@ interface FooterProps {
   onToggleMute: () => void;
   onRecenter: () => void;
   onEnd: () => void;
+  /** Background location was refused, so guidance stops while the phone is locked. */
+  lockedScreenOff?: boolean;
 }
 
 /** Remaining distance and time, with ride controls. */
@@ -109,6 +111,7 @@ export function NavigationFooter({
   onToggleMute,
   onRecenter,
   onEnd,
+  lockedScreenOff,
 }: FooterProps) {
   const now = useClock(15000);
   const remaining = track?.remaining ?? route.distance;
@@ -122,6 +125,14 @@ export function NavigationFooter({
         <Pressable style={styles.recenter} onPress={onRecenter} accessibilityLabel="Recenter map">
           <MaterialCommunityIcons name="crosshairs-gps" size={22} color={colors.primary} />
           <Text style={styles.recenterText}>Recenter</Text>
+        </Pressable>
+      )}
+      {lockedScreenOff && (
+        <Pressable style={styles.notice} onPress={() => Linking.openSettings()}>
+          <MaterialCommunityIcons name="lock-alert-outline" size={18} color={colors.warning} />
+          <Text style={styles.noticeText}>
+            Guidance pauses while the phone is locked. Tap to set location access to “Always”.
+          </Text>
         </Pressable>
       )}
       <View style={styles.footerRow}>
@@ -186,6 +197,16 @@ const styles = StyleSheet.create({
     elevation: 12,
   },
   footerRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  notice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    padding: 10,
+    marginBottom: 10,
+    borderRadius: 10,
+    backgroundColor: colors.warningBg,
+  },
+  noticeText: { flex: 1, fontSize: 13, color: colors.warning },
   iconButton: {
     height: 52,
     minWidth: 52,

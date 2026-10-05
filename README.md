@@ -8,7 +8,7 @@ Voice-guided navigation for electric scooters and e-bikes. It only routes where 
 
 Motorways, steps, and anything tagged as closed to bikes are never used.
 
-Built with Expo (SDK 57) and React Native. Maps use react-native-maps (Apple Maps on iOS, Google Maps on Android). The route is computed on the phone, from OpenStreetMap road data:
+Built with Expo (SDK 57) and React Native. The map is [MapLibre](https://maplibre.org) with free OpenStreetMap map tiles from [OpenFreeMap](https://openfreemap.org): no account, no API key, the same map on iPhone and Android. The route is computed on the phone, from OpenStreetMap road data:
 
 - **Road tiles** (preferred): pre-built files rebuilt weekly by a GitHub Action and served from free static hosting. Only the tiles a route needs are downloaded, and they stay on the phone for offline use. See [pipeline/README.md](pipeline/README.md).
 - **Overpass** (fallback): a live download, used outside the tile region or when no tiles are configured.
@@ -23,7 +23,16 @@ cp .env.example .env   # then set EXPO_PUBLIC_TILES_URL, or delete the line to u
 npx expo start
 ```
 
-Open the app in Expo Go, or in a development build (`npx expo run:ios` / `npx expo run:android`).
+The app uses native modules that Expo Go doesn't include (MapLibre, background location), so run it as a development build:
+
+```bash
+npx expo run:ios       # needs Xcode and CocoaPods (brew install cocoapods)
+npx expo run:android   # needs Android Studio
+```
+
+After the first build, `npx expo start` is enough until native dependencies or `app.json` change.
+
+**Guidance with the phone locked:** when you press Start, the app asks for location access "Always". With it, location updates and voice prompts continue with the screen locked or another app open. iPhone shows the blue location pill; Android shows a "Scoot2 is guiding you" notification. Without it, guidance works only while the app is on screen, and the ride screen says so.
 
 To preview the voice guidance without riding, turn on **Settings → Simulate ride**, choose a destination and press **Start**.
 
@@ -50,6 +59,8 @@ npx expo lint
 | Turn-by-turn instructions, including roundabouts | `src/navigation/instructions.ts` |
 | Live progress, voice timing, off-route detection | `src/navigation/tracker.ts` |
 | Spoken phrases (English and Hebrew) | `src/i18n/phrases.ts` |
+| Map (MapLibre + OpenFreeMap), route drawing, camera | `src/components/RouteMap.tsx` |
+| Location while locked (background task), voice audio session | `src/navigation/backgroundLocation.ts`, `src/navigation/voice.ts` |
 | Screens | `src/app/index.tsx` (map), `src/app/settings.tsx` |
 
 On a road above 50 km/h, the app finds the sidewalk in one of two ways:
@@ -65,7 +76,7 @@ Unnamed bike lanes and sidewalks take their name from the road beside them, so t
 
 - **Publish the road tiles.** Set up the GitHub Action (see [pipeline/README.md](pipeline/README.md)) and put its address in `.env`. Until then every route waits on the public Overpass servers.
 - **Search.** Photon's public server asks for fair use and has no uptime guarantee. If traffic grows, self-host Photon or use a paid geocoder.
-- **Android maps.** Release builds need a Google Maps API key, set in the `react-native-maps` config plugin.
-- **Screen-off guidance.** The screen stays awake while navigating. Guidance with the screen off needs background location and audio modes.
+- **Map tiles.** OpenFreeMap is free and donation-funded, with no uptime guarantee. The style URL is one constant in `RouteMap.tsx`, so moving to self-hosted tiles later is a one-line change.
+- **Store review.** Apple and Google both review "Always" location use. Explain in the listing that it is used only during navigation, to keep voice guidance running with the screen locked.
 
 Map data © OpenStreetMap contributors, ODbL.

@@ -10,6 +10,17 @@ export interface DeviceFix extends Fix {
 
 export type PermissionState = 'unknown' | 'granted' | 'denied';
 
+export function locationToFix(l: Location.LocationObject): DeviceFix {
+  return {
+    latitude: l.coords.latitude,
+    longitude: l.coords.longitude,
+    accuracy: l.coords.accuracy,
+    speed: l.coords.speed,
+    heading: l.coords.heading != null && l.coords.heading >= 0 ? l.coords.heading : null,
+    timestamp: l.timestamp,
+  };
+}
+
 /**
  * Watches the device position. `precise` switches to navigation-grade
  * accuracy with frequent updates; otherwise updates are coarse to save battery.
@@ -34,15 +45,7 @@ export function useDeviceLocation(enabled: boolean, precise: boolean) {
         distanceInterval: precise ? 2 : 10,
         timeInterval: precise ? 1000 : 5000,
       },
-      (l) =>
-        setFix({
-          latitude: l.coords.latitude,
-          longitude: l.coords.longitude,
-          accuracy: l.coords.accuracy,
-          speed: l.coords.speed,
-          heading: l.coords.heading != null && l.coords.heading >= 0 ? l.coords.heading : null,
-          timestamp: l.timestamp,
-        }),
+      (l) => setFix(locationToFix(l)),
     )
       .then((s) => {
         if (cancelled) s.remove();

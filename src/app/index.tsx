@@ -2,12 +2,13 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 import { Keyboard, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
-import MapView, { Marker, Polyline, type LongPressEvent } from 'react-native-maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ManeuverBanner, NavigationFooter } from '../components/NavigationHUD';
 import { RoutePanel } from '../components/RoutePanel';
+import { RouteMap, type RouteMapHandle } from '../components/RouteMap';
 import { SearchBar } from '../components/SearchBar';
-import { colors, MODE_STYLE } from '../components/theme';
+import { colors } from '../components/theme';
+import { useBackgroundLocation } from '../navigation/backgroundLocation';
 import { useDeviceLocation } from '../navigation/useDeviceLocation';
 import { useNavigation } from '../navigation/useNavigation';
 import { useSimulatedRide } from '../navigation/useSimulatedRide';
@@ -15,28 +16,22 @@ import { bearing, type LatLng } from '../routing/geo';
 import { reverseGeocode, type Place } from '../services/geocode';
 import { useSettings } from '../state/settings';
 
-/** Shown until the first location fix arrives. */
-const DEFAULT_REGION = {
-  latitude: 32.0853,
-  longitude: 34.7818,
-  latitudeDelta: 0.08,
-  longitudeDelta: 0.08,
-};
-
-const FOLLOW_ZOOM = 18;
-const FOLLOW_ALTITUDE = 400;
-const FOLLOW_PITCH = 50;
+/** Room for the maneuver banner when following the rider. */
+const FOLLOW_TOP_PADDING = 260;
 
 export default function MapScreen() {
   const { settings, update } = useSettings();
   const insets = useSafeAreaInsets();
-  const mapRef = useRef<MapView>(null);
+  const mapRef = useRef<RouteMapHandle>(null);
   const nav = useNavigation(settings);
 
   const simulating = settings.simulate && nav.navigating;
-  const device = useDeviceLocation(!simulating, nav.navigating);
+  // While riding, location comes from the background task so guidance survives a locked screen.
+  const background = useBackgroundLocation(nav.navigating && !simulating, nav.destination?.title);
+  const backgroundActive = background.mode === 'background';
+  const device = useDeviceLocation(!simulating && !backgroundActive, nav.navigating);
   const simFix = useSimulatedRide(nav.route, simulating, settings.cruiseSpeed);
-  const fix = simulating ? simFix : device.fix;
+  const fix = simulating ? simFix : backgroundActive ? (background.fix ?? device.fix) : device.fix;
   const lat = fix?.latitude;
   const lon = fix?.longitude;
   const here = useMemo<LatLng | null>(
@@ -59,7 +54,7 @@ export default function MapScreen() {
   useEffect(() => {
     if (!here || centeredOnce.current) return;
     centeredOnce.current = true;
-    mapRef.current?.animateCamera({ center: here, zoom: 15, altitude: 3000 }, { duration: 600 });
+    mapRef.current?.centerOn(here, 15);
   }, [here]);
 
   // Follow the rider with a tilted, heading-up camera while navigating.
@@ -72,25 +67,13 @@ export default function MapScreen() {
       const i = Math.min(nav.track.segmentIndex, pts.length - 2);
       heading = bearing(pts[i].latitude, pts[i].longitude, pts[i + 1].latitude, pts[i + 1].longitude);
     }
-    mapRef.current?.animateCamera(
-      {
-        center,
-        heading: heading ?? 0,
-        pitch: FOLLOW_PITCH,
-        zoom: FOLLOW_ZOOM,
-        altitude: FOLLOW_ALTITUDE,
-      },
-      { duration: 900 },
-    );
+    mapRef.current?.follow(center, heading ?? 0, FOLLOW_TOP_PADDING);
   }, [fix, nav.navigating, following, nav.track, nav.route]);
 
   // Show the whole route when previewing it.
   useEffect(() => {
     if (!nav.route || nav.navigating) return;
-    mapRef.current?.fitToCoordinates(nav.route.points, {
-      edgePadding: { top: insets.top + 90, bottom: 340, left: 40, right: 40 },
-      animated: true,
-    });
+    mapRef.current?.showRoute(nav.route, { top: insets.top + 120, bottom: 420 });
   }, [nav.route, nav.navigating, insets.top]);
 
   const selectPlace = (place: Place) => {
@@ -98,9 +81,8 @@ export default function MapScreen() {
     nav.chooseDestination(place, here);
   };
 
-  const onLongPress = async (e: LongPressEvent) => {
+  const onLongPress = async (p: LatLng) => {
     if (nav.navigating) return;
-    const p = e.nativeEvent.coordinate;
     const pin: Place = { id: `pin-${Date.now()}`, title: 'Dropped pin', subtitle: '', location: p };
     setSearchKey((k) => k + 1);
     selectPlace(pin);
@@ -110,59 +92,29 @@ export default function MapScreen() {
 
   const recenter = () => {
     setFollowing(true);
-    if (here && !nav.navigating) {
-      mapRef.current?.animateCamera({ center: here, zoom: 16, altitude: 1500, heading: 0, pitch: 0 }, { duration: 500 });
-    }
+    if (here && !nav.navigating) mapRef.current?.centerOn(here, 16);
   };
 
   const endNavigation = () => {
     nav.stop();
-    if (nav.track?.arrived) nav.clear();
-    mapRef.current?.animateCamera({ heading: 0, pitch: 0 }, { duration: 400 });
+    // Otherwise the route preview effect frames the remaining route again.
+    if (nav.track?.arrived) {
+      nav.clear();
+      if (here) mapRef.current?.centerOn(here, 16);
+    }
   };
 
   return (
     <View style={styles.container}>
-      <MapView
+      <RouteMap
         ref={mapRef}
-        style={StyleSheet.absoluteFill}
-        initialRegion={DEFAULT_REGION}
-        showsUserLocation={!simulating}
-        showsMyLocationButton={false}
-        showsCompass={!nav.navigating}
-        showsPointsOfInterests={!nav.navigating}
-        toolbarEnabled={false}
-        pitchEnabled
-        rotateEnabled
+        route={nav.route}
+        destination={nav.destination?.location ?? null}
+        simulatedFix={simulating ? simFix : null}
+        navigating={nav.navigating}
         onLongPress={onLongPress}
-        onPanDrag={() => nav.navigating && setFollowing(false)}
-      >
-        {nav.route && (
-          <>
-            <Polyline coordinates={nav.route.points} strokeColor="#ffffff" strokeWidth={10} zIndex={1} />
-            {nav.route.segments.map((seg, i) => (
-              <Polyline
-                key={i}
-                coordinates={seg.coordinates}
-                strokeColor={MODE_STYLE[seg.mode].color}
-                strokeWidth={6}
-                lineDashPattern={MODE_STYLE[seg.mode].dashed ? [6, 8] : undefined}
-                zIndex={2}
-              />
-            ))}
-          </>
-        )}
-        {nav.destination && (
-          <Marker coordinate={nav.destination.location} title={nav.destination.title} pinColor={colors.danger} />
-        )}
-        {simulating && fix && (
-          <Marker coordinate={fix} anchor={{ x: 0.5, y: 0.5 }} flat rotation={fix.heading ?? 0} zIndex={10}>
-            <View style={styles.simDot}>
-              <MaterialCommunityIcons name="navigation" size={22} color="#fff" />
-            </View>
-          </Marker>
-        )}
-      </MapView>
+        onUserPan={() => nav.navigating && setFollowing(false)}
+      />
 
       {nav.navigating && nav.route ? (
         <>
@@ -182,6 +134,7 @@ export default function MapScreen() {
             onToggleMute={() => update({ voiceEnabled: !settings.voiceEnabled })}
             onRecenter={recenter}
             onEnd={endNavigation}
+            lockedScreenOff={!simulating && background.mode === 'foreground'}
           />
         </>
       ) : (
@@ -277,16 +230,6 @@ const styles = StyleSheet.create({
     shadowColor: '#000',
     shadowOpacity: 0.2,
     shadowRadius: 6,
-  },
-  simDot: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.primary,
-    borderWidth: 3,
-    borderColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   attribution: {
     position: 'absolute',

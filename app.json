@@ -8,7 +8,13 @@
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.scoot2.app"
+      "bundleIdentifier": "com.scoot2.app",
+      "infoPlist": {
+        "UIBackgroundModes": [
+          "location",
+          "audio"
+        ]
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -33,9 +39,23 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Scoot2 uses your location to guide you along roads and lanes where scooters and e-bikes are allowed."
+          "locationWhenInUsePermission": "Scoot2 uses your location to guide you along roads and lanes where scooters and e-bikes are allowed.",
+          "locationAlwaysAndWhenInUsePermission": "Allow location access “Always” so voice guidance keeps working while your phone is locked or in your pocket during a ride. Scoot2 only tracks you while navigating.",
+          "isIosBackgroundLocationEnabled": true,
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true
         }
-      ]
+      ],
+      [
+        "expo-audio",
+        {
+          "microphonePermission": false,
+          "recordAudioAndroid": false,
+          "enableBackgroundPlayback": false
+        }
+      ],
+      "@maplibre/maplibre-react-native",
+      "./plugins/withSceneLifecycle"
     ],
     "scheme": "scoot2",
     "experiments": {

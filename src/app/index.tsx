@@ -87,7 +87,7 @@ export default function MapScreen() {
     setSearchKey((k) => k + 1);
     selectPlace(pin);
     const named = await reverseGeocode(p, settings.voiceLanguage).catch(() => null);
-    if (named) nav.chooseDestination({ ...named, location: p }, here);
+    if (named) nav.renameDestination({ ...named, location: p });
   };
 
   const recenter = () => {

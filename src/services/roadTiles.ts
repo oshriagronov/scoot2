@@ -19,12 +19,21 @@ export interface TileStorage {
 /** The requested area is outside the published tiles; use another data source. */
 export class NotCoveredError extends Error {}
 
-export type FetchText = (url: string, signal?: AbortSignal) => Promise<string>;
+export type FetchText = (url: string) => Promise<string>;
 
-const defaultFetchText: FetchText = async (url, signal) => {
-  const res = await fetch(url, { signal });
-  if (!res.ok) throw new Error(`Tile server returned ${res.status} for ${url}`);
-  return res.text();
+/** Downloads are shared between route requests, so each has its own time limit. */
+const REQUEST_TIMEOUT_MS = 20000;
+
+const defaultFetchText: FetchText = async (url) => {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  try {
+    const res = await fetch(url, { signal: controller.signal });
+    if (!res.ok) throw new Error(`Tile server returned ${res.status} for ${url}`);
+    return await res.text();
+  } finally {
+    clearTimeout(timer);
+  }
 };
 
 /** Re-check the manifest for newer data at most this often. */
@@ -57,6 +66,8 @@ export class TileSource {
   private manifestCheckedAt = 0;
   private manifestRequest: Promise<TileManifest> | null = null;
   private memory = new Map<string, OsmWay[]>();
+  /** Tiles being loaded, so concurrent route requests share one download per tile. */
+  private loading = new Map<string, Promise<OsmWay[]>>();
 
   constructor(
     private baseUrl: string,
@@ -83,16 +94,16 @@ export class TileSource {
     if (this.manifest && this.now() - this.manifestCheckedAt < MANIFEST_MAX_AGE_MS) {
       return Promise.resolve(this.manifest);
     }
-    // Concurrent route requests share one manifest download.
-    this.manifestRequest ??= this.loadManifest(signal).finally(() => {
+    // Concurrent route requests share one manifest download, not tied to any one caller's signal.
+    this.manifestRequest ??= this.loadManifest().finally(() => {
       this.manifestRequest = null;
     });
-    return this.manifestRequest;
+    return signal ? untilAborted(this.manifestRequest, signal) : this.manifestRequest;
   }
 
-  private async loadManifest(signal?: AbortSignal): Promise<TileManifest> {
+  private async loadManifest(): Promise<TileManifest> {
     try {
-      const text = await this.fetchText(`${this.baseUrl}/manifest.json`, signal);
+      const text = await this.fetchText(`${this.baseUrl}/manifest.json`);
       const m = this.parseManifest(text);
       this.storage.write('manifest.json', text);
       if (m.version !== this.manifest?.version) this.storage.prune(m.version);
@@ -100,7 +111,6 @@ export class TileSource {
       this.manifestCheckedAt = this.now();
       return m;
     } catch (err) {
-      if (signal?.aborted) throw err;
       // Offline or server trouble: carry on with whatever data we already have.
       if (this.manifest) return this.manifest;
       const stored = await this.storage.read('manifest.json');
@@ -135,18 +145,30 @@ export class TileSource {
     return ways;
   }
 
-  private async loadTile(version: string, key: string, signal?: AbortSignal): Promise<OsmWay[]> {
+  private loadTile(version: string, key: string, signal?: AbortSignal): Promise<OsmWay[]> {
     const cached = this.memory.get(key);
     if (cached) {
       // Refresh recency.
       this.memory.delete(key);
       this.memory.set(key, cached);
-      return cached;
+      return Promise.resolve(cached);
     }
+    const id = `${version}/${key}`;
+    let load = this.loading.get(id);
+    if (!load) {
+      // Not tied to one caller's signal: another request may be waiting on the same
+      // tile, and a finished download still fills the cache.
+      load = this.readOrDownload(version, key).finally(() => this.loading.delete(id));
+      this.loading.set(id, load);
+    }
+    return signal ? untilAborted(load, signal) : load;
+  }
+
+  private async readOrDownload(version: string, key: string): Promise<OsmWay[]> {
     const path = `${versionDir(version)}/${key}.json`;
     let text = await this.storage.read(path);
     if (text === null) {
-      text = await this.fetchText(`${this.baseUrl}/tiles/${key}.json`, signal);
+      text = await this.fetchText(`${this.baseUrl}/tiles/${key}.json`);
       this.storage.write(path, text);
     }
     const file = JSON.parse(text) as TileFile;
@@ -157,4 +179,14 @@ export class TileSource {
     }
     return ways;
   }
+}
+
+/** Resolves like `promise`, but rejects as soon as `signal` aborts. */
+function untilAborted<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
+  if (signal.aborted) return Promise.reject(new Error('Aborted'));
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => reject(new Error('Aborted'));
+    signal.addEventListener('abort', onAbort, { once: true });
+    promise.then(resolve, reject).finally(() => signal.removeEventListener('abort', onAbort));
+  });
 }

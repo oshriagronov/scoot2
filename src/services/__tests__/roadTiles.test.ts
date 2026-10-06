@@ -149,10 +149,24 @@ describe('TileSource', () => {
     ]);
   });
 
-  it('shares one manifest download between concurrent requests', async () => {
+  it('shares one download per file between concurrent requests', async () => {
     const t = setup();
     await Promise.all([t.source.fetchWays(twoTiles), t.source.fetchWays(twoTiles)]);
-    expect(t.requests.filter((r) => r.endsWith('manifest.json'))).toHaveLength(1);
+    expect(t.requests).toEqual([
+      'https://tiles.test/manifest.json',
+      'https://tiles.test/tiles/695_641.json',
+      'https://tiles.test/tiles/696_641.json',
+    ]);
+  });
+
+  it('lets an aborted request go without failing another one sharing its tiles', async () => {
+    const t = setup();
+    const controller = new AbortController();
+    const first = t.source.fetchWays(twoTiles, controller.signal);
+    const second = t.source.fetchWays(twoTiles);
+    controller.abort();
+    await expect(first).rejects.toThrow();
+    expect((await second).map((w) => w.id).sort()).toEqual([1, 2, 3]);
   });
 
   it('skips tiles the manifest says are empty', async () => {

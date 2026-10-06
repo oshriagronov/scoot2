@@ -98,6 +98,20 @@ export function useNavigation(settings: Settings) {
     [plan],
   );
 
+  /**
+   * Updates the destination's label without re-planning, e.g. when a dropped pin's
+   * address arrives. Ignored if the rider has since picked a different place.
+   */
+  const renameDestination = useCallback((place: Place) => {
+    setDestination((current) =>
+      current &&
+      current.location.latitude === place.location.latitude &&
+      current.location.longitude === place.location.longitude
+        ? place
+        : current,
+    );
+  }, []);
+
   const clear = useCallback(() => {
     abort.current?.abort();
     setDestination(null);
@@ -178,6 +192,7 @@ export function useNavigation(settings: Settings) {
     rerouting,
     track,
     chooseDestination,
+    renameDestination,
     retry: (from: LatLng) => {
       if (destination) plan(from, destination.location);
     },

@@ -19,7 +19,7 @@ Place search uses [Photon](https://photon.komoot.io) as you type. Dropped pins a
 
 ```bash
 npm install
-cp .env.example .env   # then set EXPO_PUBLIC_TILES_URL, or delete the line to use live data only
+cp .env.example .env   # optional: the app uses the published tiles by default
 npx expo start
 ```
 

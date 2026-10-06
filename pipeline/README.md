@@ -59,14 +59,16 @@ Free, with no traffic limit, commercial use allowed, and works with private repo
    `CLOUDFLARE_API_TOKEN` (the token) and `CLOUDFLARE_ACCOUNT_ID` (shown by `npx wrangler whoami`).
    If the project isn't called `scoot2-tiles`, also add the variable `CLOUDFLARE_PAGES_PROJECT`.
 4. In **Actions**, run **Road tiles** once. Later runs happen every Monday.
-5. Put the site address in `.env`: `EXPO_PUBLIC_TILES_URL=https://scoot2-tiles.pages.dev`
+5. If the address isn't `https://scoot2-tiles.pages.dev`, change `DEFAULT_TILES_URL` in
+   `src/services/roadData.ts`. The URL is public, so it lives in code rather than only in `.env`,
+   which is git-ignored and therefore missing from EAS cloud builds.
 
 ### GitHub Pages (alternative, public repositories only)
 
 1. In the repository's **Settings → Pages**, set **Source** to **GitHub Actions**.
 2. Add the repository variable `TILES_HOST=github`.
 3. In **Actions**, run **Road tiles** once.
-4. Put the site address in `.env`: `EXPO_PUBLIC_TILES_URL=https://<user>.github.io/<repo>`
+4. Set `DEFAULT_TILES_URL` in `src/services/roadData.ts` to `https://<user>.github.io/<repo>`.
 
 GitHub Pages has a soft limit of 100 GB of traffic a month, and its terms don't allow it to be
 the backbone of a commercial service.

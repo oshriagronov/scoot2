@@ -1,10 +1,10 @@
 # Rebuilds the road-data tiles from fresh OpenStreetMap data every week and
 # publishes them as a static site. See pipeline/README.md for setup.
 #
-# Host: GitHub Pages by default (free for public repositories). Set the repository
-# variable TILES_HOST=cloudflare to publish to Cloudflare Pages instead (free for
-# private repositories too); that also needs the CLOUDFLARE_API_TOKEN and
-# CLOUDFLARE_ACCOUNT_ID secrets and the CLOUDFLARE_PAGES_PROJECT variable.
+# Host: Cloudflare Pages by default. Needs the CLOUDFLARE_API_TOKEN and
+# CLOUDFLARE_ACCOUNT_ID secrets; the project is "scoot2-tiles" unless the
+# CLOUDFLARE_PAGES_PROJECT variable says otherwise. Set the repository variable
+# TILES_HOST=github to publish to GitHub Pages instead (public repositories only).
 name: Road tiles
 
 on:
@@ -60,20 +60,20 @@ jobs:
         run: npx tsx build-tiles.ts --input ../region.osm.pbf --out ../site
 
       - name: Publish to Cloudflare Pages
-        if: vars.TILES_HOST == 'cloudflare'
+        if: vars.TILES_HOST != 'github'
         uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy site --project-name=${{ vars.CLOUDFLARE_PAGES_PROJECT }} --branch=main
+          command: pages deploy site --project-name=${{ vars.CLOUDFLARE_PAGES_PROJECT || 'scoot2-tiles' }} --branch=main
 
-      - if: vars.TILES_HOST != 'cloudflare'
+      - if: vars.TILES_HOST == 'github'
         uses: actions/upload-pages-artifact@v5
         with:
           path: site
 
   deploy:
-    if: vars.TILES_HOST != 'cloudflare'
+    if: vars.TILES_HOST == 'github'
     needs: build
     runs-on: ubuntu-latest
     environment:

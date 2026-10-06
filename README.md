@@ -10,7 +10,7 @@ Motorways, steps, and anything tagged as closed to bikes are never used.
 
 Built with Expo (SDK 57) and React Native. The map is [MapLibre](https://maplibre.org) with free OpenStreetMap map tiles from [OpenFreeMap](https://openfreemap.org): no account, no API key, the same map on iPhone and Android. The route is computed on the phone, from OpenStreetMap road data:
 
-- **Road tiles** (preferred): pre-built files rebuilt weekly by a GitHub Action and served from free static hosting. Only the tiles a route needs are downloaded, and they stay on the phone for offline use. See [pipeline/README.md](pipeline/README.md).
+- **Road tiles** (preferred): pre-built files rebuilt weekly by a GitHub Action and served from Cloudflare Pages for free. Only the tiles a route needs are downloaded, and they stay on the phone for offline use. See [pipeline/README.md](pipeline/README.md).
 - **Overpass** (fallback): a live download, used outside the tile region or when no tiles are configured.
 
 Place search uses [Photon](https://photon.komoot.io) as you type. Dropped pins are named by the phone's own geocoder. Nominatim is a fallback for searches submitted with Enter.
@@ -74,7 +74,6 @@ Unnamed bike lanes and sidewalks take their name from the road beside them, so t
 
 ## Before production
 
-- **Publish the road tiles.** Set up the GitHub Action (see [pipeline/README.md](pipeline/README.md)) and put its address in `.env`. Until then every route waits on the public Overpass servers.
 - **Search.** Photon's public server asks for fair use and has no uptime guarantee. If traffic grows, self-host Photon or use a paid geocoder.
 - **Map tiles.** OpenFreeMap is free and donation-funded, with no uptime guarantee. The style URL is one constant in `RouteMap.tsx`, so moving to self-hosted tiles later is a one-line change.
 - **Store review.** Apple and Google both review "Always" location use. Explain in the listing that it is used only during navigation, to keep voice guidance running with the screen locked.

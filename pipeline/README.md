@@ -44,31 +44,32 @@ echo "EXPO_PUBLIC_TILES_URL=http://localhost:8099" > .env.local
 
 Restart `npx expo start` after changing `.env` files.
 
-## Publish (pick one)
+## Publish
 
-### GitHub Pages: public repository
+### Cloudflare Pages (default)
 
-1. Push the project to a public GitHub repository.
-2. In the repository's **Settings → Pages**, set **Source** to **GitHub Actions**.
-3. In **Actions**, run **Road tiles** once (later runs happen weekly).
-4. Put the site address in `.env`:
-   `EXPO_PUBLIC_TILES_URL=https://<user>.github.io/<repo>`
+Free, with no traffic limit, commercial use allowed, and works with private repositories.
+
+1. Create a Pages project for direct upload (any folder; it only creates the project on Cloudflare):
+   `npx wrangler pages project create scoot2-tiles --production-branch main`
+2. In the Cloudflare dashboard, open **Manage Account → API Tokens → Create Token**. Under
+   **Custom Token**, select **Get started**. Give it the permission **Account → Cloudflare Pages →
+   Edit** (shown as "Pages Write" in the summary), for your account, with no IP filter.
+3. In the GitHub repository, open **Settings → Secrets and variables → Actions** and add the secrets
+   `CLOUDFLARE_API_TOKEN` (the token) and `CLOUDFLARE_ACCOUNT_ID` (shown by `npx wrangler whoami`).
+   If the project isn't called `scoot2-tiles`, also add the variable `CLOUDFLARE_PAGES_PROJECT`.
+4. In **Actions**, run **Road tiles** once. Later runs happen every Monday.
+5. Put the site address in `.env`: `EXPO_PUBLIC_TILES_URL=https://scoot2-tiles.pages.dev`
+
+### GitHub Pages (alternative, public repositories only)
+
+1. In the repository's **Settings → Pages**, set **Source** to **GitHub Actions**.
+2. Add the repository variable `TILES_HOST=github`.
+3. In **Actions**, run **Road tiles** once.
+4. Put the site address in `.env`: `EXPO_PUBLIC_TILES_URL=https://<user>.github.io/<repo>`
 
 GitHub Pages has a soft limit of 100 GB of traffic a month, and its terms don't allow it to be
-the backbone of a commercial service. Move to Cloudflare when the app starts earning.
-
-### Cloudflare Pages: private or public repository
-
-Free, with no traffic limit, and commercial use is allowed.
-
-1. Create a free Cloudflare account. No card is needed.
-2. Create a Pages project for direct upload, e.g. `npx wrangler pages project create scoot2-tiles`.
-3. Create an API token with the **Cloudflare Pages: Edit** permission.
-4. In the GitHub repository settings:
-   - Secrets: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`
-   - Variables: `TILES_HOST=cloudflare`, `CLOUDFLARE_PAGES_PROJECT=scoot2-tiles`
-5. Run **Road tiles** in **Actions** once.
-6. Put the site address in `.env`: `EXPO_PUBLIC_TILES_URL=https://scoot2-tiles.pages.dev`
+the backbone of a commercial service.
 
 ## Adding regions
 

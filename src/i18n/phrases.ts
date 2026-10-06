@@ -2,9 +2,9 @@ import type { Instruction, StreetName, TurnType } from '../navigation/instructio
 import type { StreetNames } from '../routing/graph';
 import type { TravelMode } from '../routing/rules';
 
-export type VoiceLanguage = 'en' | 'he';
+export type Language = 'en' | 'he';
 
-export const SPEECH_LOCALE: Record<VoiceLanguage, string> = { en: 'en-US', he: 'he-IL' };
+export const SPEECH_LOCALE: Record<Language, string> = { en: 'en-US', he: 'he-IL' };
 
 /** Rounds a distance to what people expect to hear, e.g. 237 m -> "250 meters". */
 export function roundDistance(meters: number): { value: number; unit: 'm' | 'km' } {
@@ -13,7 +13,7 @@ export function roundDistance(meters: number): { value: number; unit: 'm' | 'km'
   return { value: Math.max(10, Math.round(meters / 10) * 10), unit: 'm' };
 }
 
-export function formatDistance(meters: number, lang: VoiceLanguage = 'en'): string {
+export function formatDistance(meters: number, lang: Language = 'en'): string {
   const { value, unit } = roundDistance(meters);
   if (lang === 'he') {
     if (unit === 'km') return value === 1 ? 'קילומטר' : `${value} קילומטר`;
@@ -23,24 +23,28 @@ export function formatDistance(meters: number, lang: VoiceLanguage = 'en'): stri
   return `${value} meters`;
 }
 
-export function formatDistanceShort(meters: number): string {
+/** Distance for display, e.g. "250 m" or "1.5 ק״מ". */
+export function formatDistanceShort(meters: number, lang: Language): string {
   const { value, unit } = roundDistance(meters);
+  if (lang === 'he') return unit === 'km' ? `${value} ק״מ` : `${value} מ׳`;
   return unit === 'km' ? `${value} km` : `${value} m`;
 }
 
-export function formatDuration(seconds: number): string {
+/** Duration for display, e.g. "12 min" or "1 שע׳ 5 דק׳". */
+export function formatDuration(seconds: number, lang: Language): string {
   const min = Math.max(1, Math.round(seconds / 60));
-  if (min < 60) return `${min} min`;
-  return `${Math.floor(min / 60)} h ${min % 60} min`;
+  const [h, m] = lang === 'he' ? ['שע׳', 'דק׳'] : ['h', 'min'];
+  if (min < 60) return `${min} ${m}`;
+  return `${Math.floor(min / 60)} ${h} ${min % 60} ${m}`;
 }
 
-function ownName(s: StreetNames | undefined, lang: VoiceLanguage): string | undefined {
+function ownName(s: StreetNames | undefined, lang: Language): string | undefined {
   if (!s) return undefined;
   return (lang === 'he' ? s.nameHe : s.nameEn) ?? s.name ?? s.ref;
 }
 
 /** Street name for display, falling back to "along <road>" for unnamed paths. */
-export function streetLabel(s: StreetName, lang: VoiceLanguage): string | undefined {
+export function streetLabel(s: StreetName, lang: Language): string | undefined {
   const own = ownName(s, lang);
   if (own) return own;
   const along = ownName(s.along, lang);
@@ -58,7 +62,7 @@ const PATH_NOUN: Partial<Record<TravelMode, { en: string; he: string }>> = {
 const ORDINAL_EN = ['first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth'];
 const ORDINAL_HE = ['הראשונה', 'השנייה', 'השלישית', 'הרביעית', 'החמישית', 'השישית', 'השביעית', 'השמינית'];
 
-function ordinal(n: number, lang: VoiceLanguage) {
+function ordinal(n: number, lang: Language) {
   const list = lang === 'he' ? ORDINAL_HE : ORDINAL_EN;
   return list[n - 1] ?? String(n);
 }
@@ -115,7 +119,7 @@ const MODE_HE: Record<TravelMode, string> = {
 const CARDINALS_EN = ['north', 'northeast', 'east', 'southeast', 'south', 'southwest', 'west', 'northwest'];
 const CARDINALS_HE = ['צפונה', 'לצפון מזרח', 'מזרחה', 'לדרום מזרח', 'דרומה', 'לדרום מערב', 'מערבה', 'לצפון מערב'];
 
-function cardinal(heading: number, lang: VoiceLanguage) {
+function cardinal(heading: number, lang: Language) {
   const i = Math.round(heading / 45) % 8;
   return (lang === 'he' ? CARDINALS_HE : CARDINALS_EN)[i];
 }
@@ -124,7 +128,7 @@ function cardinal(heading: number, lang: VoiceLanguage) {
  * Where the maneuver leads, e.g. "Herzl" or "the bike lane along Herzl".
  * Returns whether the surface is already named so it need not be repeated.
  */
-function destination(instr: Instruction, lang: VoiceLanguage): { text?: string; namesSurface: boolean } {
+function destination(instr: Instruction, lang: Language): { text?: string; namesSurface: boolean } {
   const own = ownName(instr.street, lang);
   if (own) return { text: own, namesSurface: false };
   const along = ownName(instr.street.along, lang);
@@ -137,7 +141,7 @@ function destination(instr: Instruction, lang: VoiceLanguage): { text?: string; 
 }
 
 /** The instruction as a sentence, without any distance prefix. */
-export function instructionText(instr: Instruction, lang: VoiceLanguage): string {
+export function instructionText(instr: Instruction, lang: Language): string {
   const he = lang === 'he';
   const modeText = (m: TravelMode) => (he ? MODE_HE : MODE_EN)[m];
 
@@ -178,7 +182,7 @@ export function instructionText(instr: Instruction, lang: VoiceLanguage): string
 export function instructionWithDistance(
   instr: Instruction,
   meters: number,
-  lang: VoiceLanguage,
+  lang: Language,
 ): string {
   const text = instructionText(instr, lang);
   const d = formatDistance(meters, lang);
@@ -186,7 +190,7 @@ export function instructionWithDistance(
   return `In ${d}, ${text.charAt(0).toLowerCase()}${text.slice(1)}`;
 }
 
-export function thenText(instr: Instruction, lang: VoiceLanguage): string {
+export function thenText(instr: Instruction, lang: Language): string {
   const text = instructionText(instr, lang);
   return lang === 'he' ? `ואז ${text}` : `then ${text.charAt(0).toLowerCase()}${text.slice(1)}`;
 }
@@ -198,4 +202,4 @@ export const PHRASES = {
     en: 'Could not find a new legal route.',
     he: 'לא נמצא מסלול חוקי חדש.',
   },
-} satisfies Record<string, Record<VoiceLanguage, string>>;
+} satisfies Record<string, Record<Language, string>>;

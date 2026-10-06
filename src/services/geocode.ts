@@ -40,27 +40,30 @@ export async function searchPlaces(
   return places;
 }
 
-/** Name of the place at a coordinate, for labelling a dropped pin. Uses the phone's own geocoder first. */
+/**
+ * Name of the place at a coordinate, for labelling a dropped pin. Photon comes
+ * first because it answers in the app language; the phone's geocoder only
+ * follows the device language, so it is the fallback.
+ */
 export async function reverseGeocode(
   p: LatLng,
   language: string,
   signal?: AbortSignal,
 ): Promise<Place | null> {
+  const named = await photonReverse(p, language, signal).catch(() => null);
+  if (named || signal?.aborted) return named;
   try {
     const [a] = await Location.reverseGeocodeAsync(p);
-    if (a) {
-      const streetLine = [a.street, a.streetNumber].filter(Boolean).join(' ');
-      const title = a.name || streetLine;
-      if (title) {
-        const subtitle = [a.name !== streetLine ? streetLine : null, a.district, a.city]
-          .filter((v): v is string => !!v && v !== title)
-          .join(', ');
-        return { id: `pin-${p.latitude},${p.longitude}`, title, subtitle, location: p };
-      }
-    }
+    if (!a) return null;
+    const streetLine = [a.street, a.streetNumber].filter(Boolean).join(' ');
+    const title = a.name || streetLine;
+    if (!title) return null;
+    const subtitle = [a.name !== streetLine ? streetLine : null, a.district, a.city]
+      .filter((v): v is string => !!v && v !== title)
+      .join(', ');
+    return { id: `pin-${p.latitude},${p.longitude}`, title, subtitle, location: p };
   } catch {
-    // Not available (e.g. no Play services) or throttled: use Photon instead.
+    // Not available (e.g. no Play services) or throttled.
+    return null;
   }
-  if (signal?.aborted) return null;
-  return photonReverse(p, language, signal).catch(() => null);
 }

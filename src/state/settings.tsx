@@ -1,11 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import type { VoiceLanguage } from '../i18n/phrases';
+import type { Language } from '../i18n/phrases';
 import type { RouteProfile } from '../routing/cost';
 
 export interface Settings {
   voiceEnabled: boolean;
-  voiceLanguage: VoiceLanguage;
+  /** Language of the screens and the voice guidance. */
+  language: Language;
   profile: RouteProfile;
   /** Cruising speed in km/h, used for timing estimates. */
   cruiseSpeed: number;
@@ -17,7 +18,7 @@ export interface Settings {
 
 export const DEFAULT_SETTINGS: Settings = {
   voiceEnabled: true,
-  voiceLanguage: 'en',
+  language: 'he',
   profile: 'safest',
   cruiseSpeed: 20,
   strictUnknown: true,

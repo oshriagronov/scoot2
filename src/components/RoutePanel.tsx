@@ -1,6 +1,7 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
-import { formatDistanceShort, formatDuration } from '../i18n/phrases';
+import { useStrings } from '../i18n/strings';
+import type { RouteErrorCode } from '../navigation/useNavigation';
 import type { TravelMode } from '../routing/rules';
 import type { Route } from '../routing/router';
 import type { Place } from '../services/geocode';
@@ -10,7 +11,7 @@ interface Props {
   destination: Place;
   route: Route | null;
   planning: boolean;
-  error: string | null;
+  error: RouteErrorCode | null;
   profileLabel: string;
   bottomInset: number;
   onStart: () => void;
@@ -31,67 +32,68 @@ export function RoutePanel({
   onClose,
   onRetry,
 }: Props) {
+  const { t, dir, distance, duration, errorText } = useStrings();
   return (
     <View style={[styles.panel, { paddingBottom: bottomInset + 14 }]}>
-      <View style={styles.header}>
+      <View style={[styles.header, dir.row]}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.title} numberOfLines={1}>
+          <Text style={[styles.title, dir.text]} numberOfLines={1}>
             {destination.title}
           </Text>
           {!!destination.subtitle && (
-            <Text style={styles.subtitle} numberOfLines={1}>
+            <Text style={[styles.subtitle, dir.text]} numberOfLines={1}>
               {destination.subtitle}
             </Text>
           )}
         </View>
-        <Pressable onPress={onClose} hitSlop={12} accessibilityLabel="Close route">
+        <Pressable onPress={onClose} hitSlop={12} accessibilityLabel={t.route.a11yClose}>
           <MaterialCommunityIcons name="close" size={24} color={colors.muted} />
         </Pressable>
       </View>
 
       {planning && (
-        <View style={styles.status}>
+        <View style={[styles.status, dir.row]}>
           <ActivityIndicator color={colors.primary} />
-          <Text style={[styles.statusText, { flex: 1 }]}>
-            Finding the best legal route… The first search in an area downloads street data and can take up to a minute.
-          </Text>
+          <Text style={[styles.statusText, dir.text, { flex: 1 }]}>{t.route.planning}</Text>
         </View>
       )}
 
       {!planning && error && (
-        <View style={styles.status}>
-          <Text style={[styles.statusText, { color: colors.danger, flex: 1 }]}>{error}</Text>
+        <View style={[styles.status, dir.row]}>
+          <Text style={[styles.statusText, dir.text, { color: colors.danger, flex: 1 }]}>
+            {errorText(error)}
+          </Text>
           <Pressable onPress={onRetry} style={styles.retry}>
-            <Text style={styles.retryText}>Retry</Text>
+            <Text style={styles.retryText}>{t.route.retry}</Text>
           </Pressable>
         </View>
       )}
 
       {!planning && !error && route && (
         <>
-          <View style={styles.summary}>
-            <Text style={styles.duration}>{formatDuration(route.duration)}</Text>
+          <View style={[styles.summary, dir.row]}>
+            <Text style={styles.duration}>{duration(route.duration)}</Text>
             <Text style={styles.distance}>
-              {formatDistanceShort(route.distance)} · {profileLabel}
+              {distance(route.distance)} · {profileLabel}
             </Text>
           </View>
 
-          <View style={styles.bar}>
+          <View style={[styles.bar, dir.row]}>
             {MODE_ORDER.map((m) => {
               const meters = route.byMode[m] ?? 0;
               if (meters <= 0) return null;
               return <View key={m} style={{ flex: meters, backgroundColor: MODE_STYLE[m].color }} />;
             })}
           </View>
-          <View style={styles.legend}>
+          <View style={[styles.legend, dir.row]}>
             {MODE_ORDER.map((m) => {
               const meters = route.byMode[m] ?? 0;
               if (meters < 1) return null;
               return (
-                <View key={m} style={styles.legendItem}>
+                <View key={m} style={[styles.legendItem, dir.row]}>
                   <View style={[styles.dot, { backgroundColor: MODE_STYLE[m].color }]} />
                   <Text style={styles.legendText}>
-                    {MODE_STYLE[m].label} {formatDistanceShort(meters)}
+                    {t.modes[m]} · {distance(meters)}
                   </Text>
                 </View>
               );
@@ -99,22 +101,21 @@ export function RoutePanel({
           </View>
 
           {route.inferredSpeedMeters > 50 && (
-            <View style={styles.warning}>
+            <View style={[styles.warning, dir.row]}>
               <MaterialCommunityIcons name="alert-outline" size={18} color={colors.warning} />
-              <Text style={styles.warningText}>
-                {formatDistanceShort(route.inferredSpeedMeters)} on roads without a speed limit in the map
-                data. Check the signs as you ride.
+              <Text style={[styles.warningText, dir.text]}>
+                {t.route.inferredSpeed(distance(route.inferredSpeedMeters))}
               </Text>
             </View>
           )}
 
           <Pressable
-            style={({ pressed }) => [styles.start, pressed && { backgroundColor: colors.primaryDark }]}
+            style={({ pressed }) => [styles.start, dir.row, pressed && { backgroundColor: colors.primaryDark }]}
             onPress={onStart}
-            accessibilityLabel="Start navigation"
+            accessibilityLabel={t.route.a11yStart}
           >
             <MaterialCommunityIcons name="navigation" size={22} color="#fff" />
-            <Text style={styles.startText}>Start</Text>
+            <Text style={styles.startText}>{t.route.start}</Text>
           </Pressable>
         </>
       )}

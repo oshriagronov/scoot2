@@ -13,7 +13,7 @@ Built with Expo (SDK 57) and React Native. The map is [MapLibre](https://maplibr
 - **Road tiles** (preferred): pre-built files rebuilt weekly by a GitHub Action and served from Cloudflare Pages for free. Only the tiles a route needs are downloaded, and they stay on the phone for offline use. See [pipeline/README.md](pipeline/README.md).
 - **Overpass** (fallback): a live download, used outside the tile region or when no tiles are configured.
 
-Place search uses [Photon](https://photon.komoot.io) as you type. Dropped pins are named by the phone's own geocoder. Nominatim is a fallback for searches submitted with Enter.
+Place search uses [Photon](https://photon.komoot.io) as you type. Dropped pins are named by Photon too, in the app language, with the phone's own geocoder as a fallback. Nominatim is a fallback for searches submitted with Enter.
 
 ## Run it
 
@@ -33,6 +33,8 @@ npx expo run:android   # needs Android Studio
 After the first build, `npx expo start` is enough until native dependencies or `app.json` change.
 
 **Guidance with the phone locked:** when you press Start, the app asks for location access "Always". With it, location updates and voice prompts continue with the screen locked or another app open. iPhone shows the blue location pill; Android shows a "Scoot2 is guiding you" notification. Without it, guidance works only while the app is on screen, and the ride screen says so.
+
+The app is in Hebrew by default, for both the screens and the voice, laid out right to left. English is available in **Settings → Language**.
 
 To preview the voice guidance without riding, turn on **Settings → Simulate ride**, choose a destination and press **Start**.
 
@@ -58,7 +60,8 @@ npx expo lint
 | Place search (Photon, Nominatim) and pin naming | `src/services/geocode.ts`, `src/services/photon.ts` |
 | Turn-by-turn instructions, including roundabouts | `src/navigation/instructions.ts` |
 | Live progress, voice timing, off-route detection | `src/navigation/tracker.ts` |
-| Spoken phrases (English and Hebrew) | `src/i18n/phrases.ts` |
+| Spoken phrases (Hebrew and English) | `src/i18n/phrases.ts` |
+| Screen text and right-to-left layout (Hebrew and English) | `src/i18n/strings.ts` |
 | Map (MapLibre + OpenFreeMap), route drawing, camera | `src/components/RouteMap.tsx` |
 | Location while locked (background task), voice audio session | `src/navigation/backgroundLocation.ts`, `src/navigation/voice.ts` |
 | Screens | `src/app/index.tsx` (map), `src/app/settings.tsx` |

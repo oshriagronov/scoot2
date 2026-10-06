@@ -14,23 +14,19 @@ const KEEP_AWAKE_TAG = 'navigation';
 /** Minimum seconds between automatic re-routes. */
 const REROUTE_COOLDOWN_MS = 10000;
 
-function errorMessage(err: unknown): string {
-  if (err instanceof RoutingError) {
-    switch (err.code) {
-      case 'too_far':
-        return err.message;
-      case 'no_road_near_start':
-        return 'No street you are allowed to ride on is near your position.';
-      case 'no_road_near_end':
-        return 'No street you are allowed to ride on is near the destination.';
-      case 'no_route':
-        return 'No legal route found. Some roads on the way may be above 50 km/h without a sidewalk or bike lane.';
-    }
-  }
+/** Why a route couldn't be planned; screens turn this into text in the app language. */
+export type RouteErrorCode =
+  | RoutingError['code']
+  | 'network'
+  | 'unknown'
+  | 'waiting_location';
+
+function errorCode(err: unknown): RouteErrorCode {
+  if (err instanceof RoutingError) return err.code;
   if (err instanceof Error && /network|fetch|Map data|Aborted|timed? ?out/i.test(err.message)) {
-    return 'Could not download map data. Check your connection and try again.';
+    return 'network';
   }
-  return err instanceof Error ? err.message : 'Something went wrong while planning the route.';
+  return 'unknown';
 }
 
 export function useNavigation(settings: Settings) {
@@ -47,7 +43,7 @@ export function useNavigation(settings: Settings) {
   const [route, setRoute] = useState<Route | null>(null);
   const [instructions, setInstructions] = useState<Instruction[]>([]);
   const [planning, setPlanning] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<RouteErrorCode | null>(null);
   const [navigating, setNavigating] = useState(false);
   const [rerouting, setRerouting] = useState(false);
   const [track, setTrack] = useState<TrackState | null>(null);
@@ -55,7 +51,7 @@ export function useNavigation(settings: Settings) {
 
   const say = useCallback((text: string) => {
     const s = settingsRef.current;
-    if (s.voiceEnabled) speak(text, s.voiceLanguage);
+    if (s.voiceEnabled) speak(text, s.language);
   }, []);
 
   const plan = useCallback(async (from: LatLng, to: LatLng): Promise<Route | null> => {
@@ -80,7 +76,7 @@ export function useNavigation(settings: Settings) {
       return r;
     } catch (err) {
       if (controller.signal.aborted) return null;
-      setError(errorMessage(err));
+      setError(errorCode(err));
       return null;
     } finally {
       if (abort.current === controller) setPlanning(false);
@@ -93,7 +89,7 @@ export function useNavigation(settings: Settings) {
       setRoute(null);
       setInstructions([]);
       if (from) plan(from, place.location);
-      else setError('Waiting for your location…');
+      else setError('waiting_location');
     },
     [plan],
   );
@@ -128,7 +124,7 @@ export function useNavigation(settings: Settings) {
     setNavigating(true);
     setTrack(null);
     activateKeepAwakeAsync(KEEP_AWAKE_TAG).catch(() => {});
-    const lang = settingsRef.current.voiceLanguage;
+    const lang = settingsRef.current.language;
     const first = instructions[0];
     say(first ? `${PHRASES.start[lang]} ${instructionText(first, lang)}` : PHRASES.start[lang]);
   }, [route, instructions, say]);
@@ -149,7 +145,7 @@ export function useNavigation(settings: Settings) {
       if (!navigatingRef.current || !t || !destination) return;
       const { state, announcements } = t.update(fix);
       setTrack(state);
-      const lang = settingsRef.current.voiceLanguage;
+      const lang = settingsRef.current.language;
       for (const a of announcements) say(announcementText(a, lang));
 
       const now = Date.now();

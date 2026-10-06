@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native';
 import type { LatLng } from '../routing/geo';
+import { useStrings } from '../i18n/strings';
 import { searchPlaces, type Place } from '../services/geocode';
 import { colors } from './theme';
 
@@ -19,18 +20,18 @@ const MIN_TYPING_CHARS = 3;
 
 interface Props {
   near: LatLng | null;
-  language: string;
   onSelect: (place: Place) => void;
   onOpenSettings: () => void;
   /** Shown under the bar while it is empty. */
   hint?: string;
 }
 
-export function SearchBar({ near, language, onSelect, onOpenSettings, hint }: Props) {
+export function SearchBar({ near, onSelect, onOpenSettings, hint }: Props) {
+  const { t, dir, lang } = useStrings();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Place[] | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<'noResults' | 'failed' | null>(null);
   const abort = useRef<AbortController | null>(null);
 
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -44,13 +45,13 @@ export function SearchBar({ near, language, onSelect, onOpenSettings, hint }: Pr
     setLoading(true);
     if (mode === 'submit') setError(null);
     try {
-      const found = await searchPlaces(q, near, language, mode, controller.signal);
+      const found = await searchPlaces(q, near, lang, mode, controller.signal);
       if (controller.signal.aborted) return;
       setResults(found);
-      setError(found.length ? null : 'No places found');
+      setError(found.length ? null : 'noResults');
     } catch {
       // While typing, a failed request just leaves the previous results; the next keystroke retries.
-      if (!controller.signal.aborted && mode === 'submit') setError('Search failed. Check your connection.');
+      if (!controller.signal.aborted && mode === 'submit') setError('failed');
     } finally {
       if (abort.current === controller) setLoading(false);
     }
@@ -88,11 +89,11 @@ export function SearchBar({ near, language, onSelect, onOpenSettings, hint }: Pr
 
   return (
     <View style={styles.wrap}>
-      <View style={styles.bar}>
+      <View style={[styles.bar, dir.row]}>
         <MaterialCommunityIcons name="magnify" size={22} color={colors.muted} />
         <TextInput
-          style={styles.input}
-          placeholder="Where to?"
+          style={[styles.input, dir.text]}
+          placeholder={t.search.placeholder}
           placeholderTextColor={colors.muted}
           value={query}
           onChangeText={onChangeText}
@@ -103,16 +104,16 @@ export function SearchBar({ near, language, onSelect, onOpenSettings, hint }: Pr
           }}
           returnKeyType="search"
           autoCorrect={false}
-          accessibilityLabel="Search destination"
+          accessibilityLabel={t.search.a11ySearch}
         />
         {loading ? (
           <ActivityIndicator color={colors.primary} />
         ) : query ? (
-          <Pressable onPress={reset} hitSlop={10} accessibilityLabel="Clear search">
+          <Pressable onPress={reset} hitSlop={10} accessibilityLabel={t.search.a11yClear}>
             <MaterialCommunityIcons name="close" size={20} color={colors.muted} />
           </Pressable>
         ) : null}
-        <Pressable onPress={onOpenSettings} hitSlop={10} style={styles.gear} accessibilityLabel="Settings">
+        <Pressable onPress={onOpenSettings} hitSlop={10} style={styles.gear} accessibilityLabel={t.search.a11ySettings}>
           <MaterialCommunityIcons name="cog" size={22} color={colors.text} />
         </Pressable>
       </View>
@@ -121,14 +122,14 @@ export function SearchBar({ near, language, onSelect, onOpenSettings, hint }: Pr
 
       {(results?.length || error) && (
         <View style={styles.results}>
-          {error && <Text style={styles.error}>{error}</Text>}
+          {error && <Text style={[styles.error, dir.text]}>{t.search[error]}</Text>}
           <FlatList
             data={results ?? []}
             keyExtractor={(p) => p.id}
             keyboardShouldPersistTaps="handled"
             renderItem={({ item }) => (
               <Pressable
-                style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
+                style={({ pressed }) => [styles.row, dir.row, pressed && styles.rowPressed]}
                 onPress={() => {
                   if (debounce.current) clearTimeout(debounce.current);
                   abort.current?.abort();
@@ -139,10 +140,10 @@ export function SearchBar({ near, language, onSelect, onOpenSettings, hint }: Pr
               >
                 <MaterialCommunityIcons name="map-marker" size={20} color={colors.primary} />
                 <View style={styles.rowText}>
-                  <Text style={styles.title} numberOfLines={1}>
+                  <Text style={[styles.title, dir.text]} numberOfLines={1}>
                     {item.title}
                   </Text>
-                  <Text style={styles.subtitle} numberOfLines={1}>
+                  <Text style={[styles.subtitle, dir.text]} numberOfLines={1}>
                     {item.subtitle}
                   </Text>
                 </View>
@@ -172,7 +173,7 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   input: { flex: 1, fontSize: 17, color: colors.text },
-  gear: { paddingLeft: 4 },
+  gear: { paddingHorizontal: 2 },
   results: {
     marginTop: 6,
     backgroundColor: colors.surface,

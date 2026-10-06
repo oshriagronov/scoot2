@@ -44,6 +44,10 @@ Docs: https://docs.expo.dev/eas/index.md
 
 Voice-guided navigation for e-scooters and e-bikes. Routes are planned on the phone over OpenStreetMap data and may only use ways these vehicles can legally ride. README.md has the full file map; pipeline/README.md covers the road-tile pipeline.
 
+### Language
+
+Hebrew is the default; English is the other option (`settings.language`, one setting for screens and voice). Screen text lives in `src/i18n/strings.ts` (`useStrings()` gives `t` for text and `dir` for right-to-left rows and text alignment); spoken phrases live in `src/i18n/phrases.ts`. Add every new UI string in both languages, and apply `dir.row` / `dir.text` to new rows and text blocks. The app mirrors its own layout instead of forcing native RTL (`I18nManager`), so switching language needs no restart. Turn arrows are never mirrored.
+
 ### Riding rules (the core requirement)
 
 1. Roads only when the speed limit is 50 km/h or less.
@@ -64,7 +68,7 @@ They are implemented in `src/routing/rules.ts` (`classifyWay`), with speed parsi
 The owner wants no paid infrastructure until the app earns money. Prefer static hosting, on-device computation and scheduled GitHub Actions over servers and paid APIs.
 
 - **Road data:** tiles built weekly by `.github/workflows/road-tiles.yml` from a Geofabrik extract and deployed to Cloudflare Pages (`https://scoot2-tiles.pages.dev`, project `scoot2-tiles`). The app caches tiles on the device and falls back to live Overpass outside the covered region (Israel).
-- **Search:** Photon as you type (debounced; public server, fair use). The phone's geocoder names dropped pins. Nominatim is only a fallback for submitted searches: its policy allows 1 request/s for the whole app and bans search-as-you-type.
+- **Search:** Photon as you type (debounced; public server, fair use). Dropped pins are named by Photon in the app language; the phone's geocoder (device language only) is the fallback. Nominatim is only a fallback for submitted searches: its policy allows 1 request/s for the whole app and bans search-as-you-type.
 - **Map:** MapLibre with OpenFreeMap tiles (no key). The attribution button must stay on.
 
 ### Building and running

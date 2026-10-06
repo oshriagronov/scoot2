@@ -5,11 +5,11 @@ import {
   instructionWithDistance,
   SPEECH_LOCALE,
   thenText,
-  type VoiceLanguage,
+  type Language,
 } from '../i18n/phrases';
 import type { Announcement } from './tracker';
 
-export function announcementText(a: Announcement, lang: VoiceLanguage): string {
+export function announcementText(a: Announcement, lang: Language): string {
   switch (a.kind) {
     case 'prepare':
       return instructionWithDistance(a.instruction, a.distance, lang);
@@ -49,7 +49,7 @@ function release(id: number) {
  * Speaks a navigation prompt. A newer prompt replaces anything still being
  * spoken, since stale directions are worse than cut-off ones.
  */
-export function speak(text: string, lang: VoiceLanguage) {
+export function speak(text: string, lang: Language) {
   const id = ++current;
   Speech.stop();
   void prepareSession().then(async () => {

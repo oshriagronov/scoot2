@@ -8,6 +8,7 @@ import { RoutePanel } from '../components/RoutePanel';
 import { RouteMap, type RouteMapHandle } from '../components/RouteMap';
 import { SearchBar } from '../components/SearchBar';
 import { colors } from '../components/theme';
+import { useStrings } from '../i18n/strings';
 import { useBackgroundLocation } from '../navigation/backgroundLocation';
 import { useDeviceLocation } from '../navigation/useDeviceLocation';
 import { useNavigation } from '../navigation/useNavigation';
@@ -27,7 +28,11 @@ export default function MapScreen() {
 
   const simulating = settings.simulate && nav.navigating;
   // While riding, location comes from the background task so guidance survives a locked screen.
-  const background = useBackgroundLocation(nav.navigating && !simulating, nav.destination?.title);
+  const { t, dir } = useStrings();
+  const background = useBackgroundLocation(nav.navigating && !simulating, {
+    title: t.ride.notificationTitle,
+    body: nav.destination ? t.ride.notificationTo(nav.destination.title) : t.ride.notificationVoice,
+  });
   const backgroundActive = background.mode === 'background';
   const device = useDeviceLocation(!simulating && !backgroundActive, nav.navigating);
   const simFix = useSimulatedRide(nav.route, simulating, settings.cruiseSpeed);
@@ -83,10 +88,10 @@ export default function MapScreen() {
 
   const onLongPress = async (p: LatLng) => {
     if (nav.navigating) return;
-    const pin: Place = { id: `pin-${Date.now()}`, title: 'Dropped pin', subtitle: '', location: p };
+    const pin: Place = { id: `pin-${Date.now()}`, title: t.map.droppedPin, subtitle: '', location: p };
     setSearchKey((k) => k + 1);
     selectPlace(pin);
-    const named = await reverseGeocode(p, settings.voiceLanguage).catch(() => null);
+    const named = await reverseGeocode(p, settings.language).catch(() => null);
     if (named) nav.renameDestination({ ...named, location: p });
   };
 
@@ -122,7 +127,6 @@ export default function MapScreen() {
             instructions={nav.instructions}
             track={nav.track}
             rerouting={nav.rerouting}
-            language={settings.voiceLanguage}
             topInset={insets.top}
           />
           <NavigationFooter
@@ -143,17 +147,14 @@ export default function MapScreen() {
             <SearchBar
               key={searchKey}
               near={here}
-              language={settings.voiceLanguage}
               onSelect={selectPlace}
               onOpenSettings={() => router.push('/settings')}
-              hint={nav.destination ? undefined : 'Search for a place, or long-press the map to drop a pin'}
+              hint={nav.destination ? undefined : t.search.hint}
             />
             {device.permission === 'denied' && (
-              <Pressable style={styles.permission} onPress={() => Linking.openSettings()}>
+              <Pressable style={[styles.permission, dir.row]} onPress={() => Linking.openSettings()}>
                 <MaterialCommunityIcons name="map-marker-off" size={18} color={colors.warning} />
-                <Text style={styles.permissionText}>
-                  Location is off. Tap to allow it so the app can guide you.
-                </Text>
+                <Text style={[styles.permissionText, dir.text]}>{t.map.locationOff}</Text>
               </Pressable>
             )}
           </View>
@@ -162,7 +163,7 @@ export default function MapScreen() {
             <Pressable
               style={[styles.fab, { bottom: insets.bottom + 28 }]}
               onPress={recenter}
-              accessibilityLabel="Show my location"
+              accessibilityLabel={t.map.a11yMyLocation}
             >
               <MaterialCommunityIcons name="crosshairs-gps" size={24} color={colors.primary} />
             </Pressable>
@@ -174,7 +175,7 @@ export default function MapScreen() {
               route={nav.route}
               planning={nav.planning}
               error={nav.error}
-              profileLabel={settings.profile === 'safest' ? 'Safest' : 'Fastest'}
+              profileLabel={settings.profile === 'safest' ? t.route.safest : t.route.fastest}
               bottomInset={insets.bottom}
               onStart={() => {
                 setFollowing(true);
@@ -197,7 +198,7 @@ export default function MapScreen() {
               : { bottom: insets.bottom + 4, right: 8 },
         ]}
       >
-        Routing data © OpenStreetMap contributors
+        {t.map.attribution}
       </Text>
     </View>
   );

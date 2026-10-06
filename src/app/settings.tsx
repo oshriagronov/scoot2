@@ -1,6 +1,8 @@
+import { Stack } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { colors, MODE_STYLE } from '../components/theme';
-import type { VoiceLanguage } from '../i18n/phrases';
+import type { Language } from '../i18n/phrases';
+import { useStrings, type Direction } from '../i18n/strings';
 import { speak } from '../navigation/voice';
 import type { RouteProfile } from '../routing/cost';
 import type { TravelMode } from '../routing/rules';
@@ -10,13 +12,15 @@ function Segmented<T extends string | number>({
   options,
   value,
   onChange,
+  dir,
 }: {
   options: { value: T; label: string }[];
   value: T;
   onChange: (v: T) => void;
+  dir: Direction;
 }) {
   return (
-    <View style={styles.segmented}>
+    <View style={[styles.segmented, dir.row]}>
       {options.map((o) => {
         const active = o.value === value;
         return (
@@ -35,12 +39,22 @@ function Segmented<T extends string | number>({
   );
 }
 
-function Row({ title, detail, children }: { title: string; detail?: string; children: React.ReactNode }) {
+function Row({
+  title,
+  detail,
+  dir,
+  children,
+}: {
+  title: string;
+  detail?: string;
+  dir: Direction;
+  children: React.ReactNode;
+}) {
   return (
-    <View style={styles.row}>
+    <View style={[styles.row, dir.row]}>
       <View style={{ flex: 1 }}>
-        <Text style={styles.rowTitle}>{title}</Text>
-        {detail && <Text style={styles.rowDetail}>{detail}</Text>}
+        <Text style={[styles.rowTitle, dir.text]}>{title}</Text>
+        {detail && <Text style={[styles.rowDetail, dir.text]}>{detail}</Text>}
       </View>
       {children}
     </View>
@@ -49,103 +63,102 @@ function Row({ title, detail, children }: { title: string; detail?: string; chil
 
 const LEGEND: TravelMode[] = ['bike_lane', 'road_lane', 'road', 'sidewalk', 'shared_path', 'crossing'];
 
+/** A sample prompt for "Test voice", in each language. */
+const TEST_PHRASE: Record<Language, string> = {
+  en: 'In 200 meters, turn right onto the bike lane',
+  he: 'בעוד 200 מטר, פנה ימינה אל שביל האופניים',
+};
+
 export default function SettingsScreen() {
   const { settings, update } = useSettings();
+  const { t, dir } = useStrings();
+  const s = t.settings;
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <Text style={styles.section}>Voice</Text>
+      <Stack.Screen options={{ title: s.title }} />
+
+      <Text style={[styles.section, dir.text]}>{s.sectionLanguage}</Text>
       <View style={styles.card}>
-        <Row title="Voice guidance">
+        <View style={styles.block}>
+          <Text style={[styles.rowTitle, dir.text]}>{s.language}</Text>
+          <Segmented<Language>
+            options={[
+              { value: 'he', label: 'עברית' },
+              { value: 'en', label: 'English' },
+            ]}
+            value={settings.language}
+            onChange={(v) => update({ language: v })}
+            dir={dir}
+          />
+          <Text style={[styles.rowDetail, dir.text]}>{s.languageDetail}</Text>
+        </View>
+        <Row title={s.voiceGuidance} dir={dir}>
           <Switch value={settings.voiceEnabled} onValueChange={(v) => update({ voiceEnabled: v })} />
         </Row>
         <View style={styles.block}>
-          <Text style={styles.rowTitle}>Language</Text>
-          <Segmented<VoiceLanguage>
-            options={[
-              { value: 'en', label: 'English' },
-              { value: 'he', label: 'עברית' },
-            ]}
-            value={settings.voiceLanguage}
-            onChange={(v) => update({ voiceLanguage: v })}
-          />
-          <Pressable
-            style={styles.test}
-            onPress={() =>
-              speak(
-                settings.voiceLanguage === 'he'
-                  ? 'בעוד 200 מטר, פנה ימינה אל שביל האופניים'
-                  : 'In 200 meters, turn right onto the bike lane',
-                settings.voiceLanguage,
-              )
-            }
-          >
-            <Text style={styles.testText}>Test voice</Text>
+          <Pressable style={[styles.test, dir.start]} onPress={() => speak(TEST_PHRASE[settings.language], settings.language)}>
+            <Text style={styles.testText}>{s.testVoice}</Text>
           </Pressable>
         </View>
       </View>
 
-      <Text style={styles.section}>Route</Text>
+      <Text style={[styles.section, dir.text]}>{s.sectionRoute}</Text>
       <View style={styles.card}>
         <View style={styles.block}>
-          <Text style={styles.rowTitle}>Preference</Text>
+          <Text style={[styles.rowTitle, dir.text]}>{s.preference}</Text>
           <Segmented<RouteProfile>
             options={[
-              { value: 'safest', label: 'Safest' },
-              { value: 'fastest', label: 'Fastest' },
+              { value: 'safest', label: t.route.safest },
+              { value: 'fastest', label: t.route.fastest },
             ]}
             value={settings.profile}
             onChange={(v) => update({ profile: v })}
+            dir={dir}
           />
-          <Text style={styles.rowDetail}>
-            {settings.profile === 'safest'
-              ? 'Prefers bike lanes and quiet 30 km/h streets, even if the ride is a bit longer.'
-              : 'Shortest legal ride time. Still never uses roads above 50 km/h.'}
+          <Text style={[styles.rowDetail, dir.text]}>
+            {settings.profile === 'safest' ? s.safestDetail : s.fastestDetail}
           </Text>
         </View>
         <View style={styles.block}>
-          <Text style={styles.rowTitle}>Your cruising speed</Text>
+          <Text style={[styles.rowTitle, dir.text]}>{s.cruisingSpeed}</Text>
           <Segmented<number>
-            options={[15, 20, 25].map((v) => ({ value: v, label: `${v} km/h` }))}
+            options={[15, 20, 25].map((v) => ({ value: v, label: s.kmh(v) }))}
             value={settings.cruiseSpeed}
             onChange={(v) => update({ cruiseSpeed: v })}
+            dir={dir}
           />
         </View>
-        <Row
-          title="Strict speed limits"
-          detail="Main roads with no speed limit in the map data are treated as above 50 km/h, so you ride the sidewalk or avoid them."
-        >
+        <Row title={s.strict} detail={s.strictDetail} dir={dir}>
           <Switch value={settings.strictUnknown} onValueChange={(v) => update({ strictUnknown: v })} />
         </Row>
       </View>
 
-      <Text style={styles.section}>Riding rules applied</Text>
+      <Text style={[styles.section, dir.text]}>{s.sectionRules}</Text>
       <View style={[styles.card, styles.block]}>
-        <Text style={styles.rule}>1. Roads only when the speed limit is 50 km/h or less.</Text>
-        <Text style={styles.rule}>2. Sidewalks only beside roads whose limit is above 50 km/h.</Text>
-        <Text style={styles.rule}>3. Sidewalks with a marked lane for bikes and scooters are always allowed.</Text>
-        <Text style={styles.rule}>Motorways, steps and roads closed to bikes are never used.</Text>
-        <View style={styles.legend}>
+        {s.rules.map((rule) => (
+          <Text key={rule} style={[styles.rule, dir.text]}>
+            {rule}
+          </Text>
+        ))}
+        <View style={[styles.legend, dir.row]}>
           {LEGEND.map((m) => (
-            <View key={m} style={styles.legendItem}>
+            <View key={m} style={[styles.legendItem, dir.row]}>
               <View style={[styles.swatch, { backgroundColor: MODE_STYLE[m].color }]} />
-              <Text style={styles.legendText}>{MODE_STYLE[m].label}</Text>
+              <Text style={styles.legendText}>{t.modes[m]}</Text>
             </View>
           ))}
         </View>
       </View>
 
-      <Text style={styles.section}>Testing</Text>
+      <Text style={[styles.section, dir.text]}>{s.sectionTesting}</Text>
       <View style={styles.card}>
-        <Row title="Simulate ride" detail="Rides the route automatically instead of using GPS, to preview voice guidance.">
+        <Row title={s.simulate} detail={s.simulateDetail} dir={dir}>
           <Switch value={settings.simulate} onValueChange={(v) => update({ simulate: v })} />
         </Row>
       </View>
 
-      <Text style={styles.footer}>
-        Routes come from OpenStreetMap data, which may be incomplete or out of date. Always follow
-        road signs and local law. Map data © OpenStreetMap contributors (ODbL).
-      </Text>
+      <Text style={styles.footer}>{s.footer}</Text>
     </ScrollView>
   );
 }
@@ -160,7 +173,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     marginTop: 18,
     marginBottom: 8,
-    marginLeft: 4,
+    marginHorizontal: 4,
   },
   card: { backgroundColor: colors.surface, borderRadius: 14, overflow: 'hidden' },
   row: {
@@ -184,7 +197,7 @@ const styles = StyleSheet.create({
   segmentActive: { backgroundColor: colors.surface, elevation: 1, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 2 },
   segmentText: { fontSize: 15, color: colors.muted, fontWeight: '600' },
   segmentTextActive: { color: colors.primary },
-  test: { alignSelf: 'flex-start', paddingVertical: 6 },
+  test: { paddingVertical: 2 },
   testText: { color: colors.primary, fontWeight: '700', fontSize: 15 },
   rule: { fontSize: 15, color: colors.text, lineHeight: 21 },
   legend: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 6 },

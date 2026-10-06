@@ -16,14 +16,15 @@ export const colors = {
   banner: '#0f172a',
 };
 
-export const MODE_STYLE: Record<TravelMode | 'connector', { color: string; label: string; dashed?: boolean }> = {
-  bike_lane: { color: '#16a34a', label: 'Bike lane' },
-  road_lane: { color: '#0891b2', label: 'Lane on road' },
-  road: { color: '#2563eb', label: 'Road ≤ 50' },
-  sidewalk: { color: '#f59e0b', label: 'Sidewalk' },
-  shared_path: { color: '#14b8a6', label: 'Shared path' },
-  crossing: { color: '#a855f7', label: 'Crossing' },
-  connector: { color: '#94a3b8', label: 'Walk', dashed: true },
+/** Route line colors by travel mode. Labels are in i18n/strings.ts (`t.modes`). */
+export const MODE_STYLE: Record<TravelMode | 'connector', { color: string; dashed?: boolean }> = {
+  bike_lane: { color: '#16a34a' },
+  road_lane: { color: '#0891b2' },
+  road: { color: '#2563eb' },
+  sidewalk: { color: '#f59e0b' },
+  shared_path: { color: '#14b8a6' },
+  crossing: { color: '#a855f7' },
+  connector: { color: '#94a3b8', dashed: true },
 };
 
 type IconName = ComponentProps<typeof MaterialCommunityIcons>['name'];

@@ -1,12 +1,8 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
-import {
-  formatDistanceShort,
-  formatDuration,
-  instructionText,
-  type VoiceLanguage,
-} from '../i18n/phrases';
+import { instructionText } from '../i18n/phrases';
+import { useStrings } from '../i18n/strings';
 import type { Instruction } from '../navigation/instructions';
 import type { TrackState } from '../navigation/tracker';
 import type { Route } from '../routing/router';
@@ -16,13 +12,12 @@ interface BannerProps {
   instructions: Instruction[];
   track: TrackState | null;
   rerouting: boolean;
-  language: VoiceLanguage;
   topInset: number;
 }
 
 /** Next maneuver, shown at the top of the screen while riding. */
-export function ManeuverBanner({ instructions, track, rerouting, language, topInset }: BannerProps) {
-  const rtl = language === 'he';
+export function ManeuverBanner({ instructions, track, rerouting, topInset }: BannerProps) {
+  const { t, dir, lang, distance } = useStrings();
   const index = track?.nextIndex ?? 1;
   const next = instructions[index] ?? instructions[instructions.length - 1];
   const after = instructions[index + 1];
@@ -32,7 +27,7 @@ export function ManeuverBanner({ instructions, track, rerouting, language, topIn
   if (rerouting || track?.offRoute) {
     return (
       <View style={[styles.banner, { paddingTop: topInset + 12, backgroundColor: colors.warning }]}>
-        <Text style={styles.bannerText}>Recalculating…</Text>
+        <Text style={[styles.bannerText, dir.text]}>{t.ride.recalculating}</Text>
       </View>
     );
   }
@@ -40,28 +35,25 @@ export function ManeuverBanner({ instructions, track, rerouting, language, topIn
 
   return (
     <View style={[styles.banner, { paddingTop: topInset + 12 }]}>
-      <View style={styles.bannerRow}>
+      <View style={[styles.bannerRow, dir.row]}>
+        {/* Arrows show the real turn direction, so they are never mirrored. */}
         <MaterialCommunityIcons name={turnIcon(next.type, next.angle)} size={48} color="#fff" />
         <View style={{ flex: 1 }}>
-          <Text style={styles.bannerDistance}>{formatDistanceShort(dist)}</Text>
-          <Text
-            style={[styles.bannerText, rtl && styles.rtl]}
-            numberOfLines={2}
-            accessibilityLiveRegion="polite"
-          >
-            {instructionText(next, language)}
+          <Text style={[styles.bannerDistance, dir.text]}>{distance(dist)}</Text>
+          <Text style={[styles.bannerText, dir.text]} numberOfLines={2} accessibilityLiveRegion="polite">
+            {instructionText(next, lang)}
           </Text>
         </View>
       </View>
-      <View style={styles.bannerFooter}>
+      <View style={[styles.bannerFooter, dir.row]}>
         {mode && (
           <View style={[styles.modePill, { backgroundColor: MODE_STYLE[mode].color }]}>
-            <Text style={styles.modePillText}>Now: {MODE_STYLE[mode].label}</Text>
+            <Text style={styles.modePillText}>{t.ride.now(t.modes[mode])}</Text>
           </View>
         )}
         {after && after.type !== 'arrive' && (
-          <Text style={[styles.then, rtl && styles.rtl]} numberOfLines={1}>
-            Then: {instructionText(after, language)}
+          <Text style={[styles.then, dir.text]} numberOfLines={1}>
+            {t.ride.then(instructionText(after, lang))}
           </Text>
         )}
       </View>
@@ -113,6 +105,7 @@ export function NavigationFooter({
   onEnd,
   lockedScreenOff,
 }: FooterProps) {
+  const { t, dir, distance, duration, time } = useStrings();
   const now = useClock(15000);
   const remaining = track?.remaining ?? route.distance;
   const remainingTime = route.distance > 0 ? (route.duration * remaining) / route.distance : 0;
@@ -122,39 +115,43 @@ export function NavigationFooter({
   return (
     <View style={[styles.footer, { paddingBottom: bottomInset + 12 }]}>
       {!following && (
-        <Pressable style={styles.recenter} onPress={onRecenter} accessibilityLabel="Recenter map">
+        <Pressable
+          style={[styles.recenter, dir.row, dir.rtl ? { left: 16 } : { right: 16 }]}
+          onPress={onRecenter}
+          accessibilityLabel={t.ride.a11yRecenter}
+        >
           <MaterialCommunityIcons name="crosshairs-gps" size={22} color={colors.primary} />
-          <Text style={styles.recenterText}>Recenter</Text>
+          <Text style={styles.recenterText}>{t.ride.recenter}</Text>
         </Pressable>
       )}
       {lockedScreenOff && (
-        <Pressable style={styles.notice} onPress={() => Linking.openSettings()}>
+        <Pressable style={[styles.notice, dir.row]} onPress={() => Linking.openSettings()}>
           <MaterialCommunityIcons name="lock-alert-outline" size={18} color={colors.warning} />
-          <Text style={styles.noticeText}>
-            Guidance pauses while the phone is locked. Tap to set location access to “Always”.
-          </Text>
+          <Text style={[styles.noticeText, dir.text]}>{t.ride.lockedNotice}</Text>
         </Pressable>
       )}
-      <View style={styles.footerRow}>
-        <Pressable onPress={onToggleMute} style={styles.iconButton} accessibilityLabel={muted ? 'Unmute voice' : 'Mute voice'}>
+      <View style={[styles.footerRow, dir.row]}>
+        <Pressable
+          onPress={onToggleMute}
+          style={styles.iconButton}
+          accessibilityLabel={muted ? t.ride.a11yUnmute : t.ride.a11yMute}
+        >
           <MaterialCommunityIcons name={muted ? 'volume-off' : 'volume-high'} size={26} color={colors.text} />
         </Pressable>
         <View style={{ flex: 1, alignItems: 'center' }}>
           {arrived ? (
-            <Text style={styles.eta}>You have arrived</Text>
+            <Text style={styles.eta}>{t.ride.arrived}</Text>
           ) : (
             <>
-              <Text style={styles.eta}>
-                {eta.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              </Text>
+              <Text style={styles.eta}>{time(eta)}</Text>
               <Text style={styles.remaining}>
-                {formatDuration(remainingTime)} · {formatDistanceShort(remaining)}
+                {duration(remainingTime)} · {distance(remaining)}
               </Text>
             </>
           )}
         </View>
-        <Pressable onPress={onEnd} style={[styles.iconButton, styles.end]} accessibilityLabel="End navigation">
-          <Text style={styles.endText}>{arrived ? 'Done' : 'End'}</Text>
+        <Pressable onPress={onEnd} style={[styles.iconButton, styles.end]} accessibilityLabel={t.ride.a11yEnd}>
+          <Text style={styles.endText}>{arrived ? t.ride.done : t.ride.end}</Text>
         </Pressable>
       </View>
     </View>
@@ -176,7 +173,6 @@ const styles = StyleSheet.create({
   bannerRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   bannerDistance: { color: '#fff', fontSize: 30, fontWeight: '800' },
   bannerText: { color: '#e2e8f0', fontSize: 18, fontWeight: '600' },
-  rtl: { writingDirection: 'rtl', textAlign: 'right' },
   bannerFooter: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 10 },
   modePill: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
   modePillText: { color: '#fff', fontWeight: '700', fontSize: 13 },
@@ -223,8 +219,6 @@ const styles = StyleSheet.create({
   recenter: {
     position: 'absolute',
     top: -56,
-    right: 16,
-    flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
     backgroundColor: colors.surface,

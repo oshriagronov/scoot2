@@ -40,7 +40,14 @@ export type GuidanceMode = 'starting' | 'background' | 'foreground';
  * Starts background location updates while `active`, asking for the "Always"
  * permission the first time. Falls back to `foreground` if it is refused.
  */
-export function useBackgroundLocation(active: boolean, destinationName: string | undefined) {
+/** Text for the Android "guiding you" notification, in the app language. */
+export interface GuidanceNotice {
+  title: string;
+  body: string;
+}
+
+export function useBackgroundLocation(active: boolean, notice: GuidanceNotice) {
+  const { title, body } = notice;
   const [fix, setFix] = useState<DeviceFix | null>(null);
   const [mode, setMode] = useState<GuidanceMode>('starting');
 
@@ -66,8 +73,8 @@ export function useBackgroundLocation(active: boolean, destinationName: string |
           pausesUpdatesAutomatically: false,
           showsBackgroundLocationIndicator: true,
           foregroundService: {
-            notificationTitle: 'Scoot2 is guiding you',
-            notificationBody: destinationName ? `To ${destinationName}` : 'Voice guidance is on',
+            notificationTitle: title,
+            notificationBody: body,
             notificationColor: '#0f766e',
             killServiceOnDestroy: true,
           },
@@ -85,7 +92,7 @@ export function useBackgroundLocation(active: boolean, destinationName: string |
       setFix(null);
       void stop();
     };
-  }, [active, destinationName]);
+  }, [active, title, body]);
 
   return { fix: active ? fix : null, mode: active ? mode : 'starting' };
 }

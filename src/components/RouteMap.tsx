@@ -116,6 +116,8 @@ export function RouteMap({ route, destination, simulatedFix, navigating, onLongP
       logo={false}
       compass={!navigating}
       compassPosition={{ top: 140, right: 12 }}
+      // OpenFreeMap and OpenStreetMap require attribution; this shows the map's credits button.
+      attribution
       attributionPosition={{ bottom: 4, left: 8 }}
       onLongPress={(e) => {
         const [longitude, latitude] = e.nativeEvent.lngLat;

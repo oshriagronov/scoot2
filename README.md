@@ -78,4 +78,10 @@ Unnamed bike lanes and sidewalks take their name from the road beside them, so t
 - **Map tiles.** OpenFreeMap is free and donation-funded, with no uptime guarantee. The style URL is one constant in `RouteMap.tsx`, so moving to self-hosted tiles later is a one-line change.
 - **Store review.** Apple and Google both review "Always" location use. Explain in the listing that it is used only during navigation, to keep voice guidance running with the screen locked.
 
-Map data © OpenStreetMap contributors, ODbL.
+## License
+
+The code is open source under the [Apache License 2.0](LICENSE). You can use, change and redistribute it, including in commercial apps, as long as you keep the licence and [NOTICE](NOTICE) file. Contributions are accepted under the same licence.
+
+Apache 2.0 fits the rest of the stack: Expo, React Native and MapLibre React Native are MIT, MapLibre Native is BSD, and TypeScript is Apache 2.0. It adds an explicit patent grant, which protects contributors and users. Unlike GPL licences, it doesn't conflict with App Store distribution.
+
+**Map data** isn't covered by the code licence. Road data and the published road tiles come from OpenStreetMap, © OpenStreetMap contributors, under the [ODbL](https://www.openstreetmap.org/copyright). Anything built from them must credit OpenStreetMap, and a changed version of the tile database must also be shared under the ODbL. The base map comes from [OpenFreeMap](https://openfreemap.org), and its attribution is shown on the map.

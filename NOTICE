@@ -1,0 +1,9 @@
+Scoot2
+Copyright 2026 Oshri Agronov and Scoot2 contributors
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+Map and road data used by this product, including the road tiles built by
+pipeline/build-tiles.ts, come from OpenStreetMap: © OpenStreetMap contributors,
+available under the Open Database License (ODbL) 1.0,
+https://www.openstreetmap.org/copyright

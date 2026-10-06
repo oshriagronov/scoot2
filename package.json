@@ -39,5 +39,6 @@
     "typecheck": "tsc --noEmit",
     "lint": "expo lint"
   },
-  "private": true
+  "private": true,
+  "license": "Apache-2.0"
 }

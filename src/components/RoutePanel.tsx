@@ -2,9 +2,13 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useStrings } from '../i18n/strings';
 import type { RouteErrorCode } from '../navigation/useNavigation';
+import type { RouteProfile } from '../routing/cost';
 import type { TravelMode } from '../routing/rules';
 import type { Route } from '../routing/router';
 import type { Place } from '../services/geocode';
+import { Segmented } from './controls';
+import { Glass } from './Glass';
+import { useClock } from './useClock';
 import { colors, MODE_STYLE } from './theme';
 
 interface Props {
@@ -12,8 +16,9 @@ interface Props {
   route: Route | null;
   planning: boolean;
   error: RouteErrorCode | null;
-  profileLabel: string;
+  profile: RouteProfile;
   bottomInset: number;
+  onProfileChange: (profile: RouteProfile) => void;
   onStart: () => void;
   onClose: () => void;
   onRetry: () => void;
@@ -21,22 +26,27 @@ interface Props {
 
 const MODE_ORDER: TravelMode[] = ['bike_lane', 'road_lane', 'shared_path', 'road', 'sidewalk', 'crossing'];
 
+/** Floating sheet with the chosen place, the route summary and the Start button. */
 export function RoutePanel({
   destination,
   route,
   planning,
   error,
-  profileLabel,
+  profile,
   bottomInset,
+  onProfileChange,
   onStart,
   onClose,
   onRetry,
 }: Props) {
-  const { t, dir, distance, duration, errorText } = useStrings();
+  const { t, dir, distance, duration, time, errorText } = useStrings();
+  const now = useClock(15000);
   return (
-    <View style={[styles.panel, { paddingBottom: bottomInset + 14 }]}>
+    <Glass variant="thick" style={[styles.panel, { paddingBottom: Math.max(bottomInset - 8, 16) }]}>
+      <View style={styles.grabber} />
+
       <View style={[styles.header, dir.row]}>
-        <View style={{ flex: 1 }}>
+        <View style={{ flex: 1, gap: 3 }}>
           <Text style={[styles.title, dir.text]} numberOfLines={1}>
             {destination.title}
           </Text>
@@ -46,23 +56,31 @@ export function RoutePanel({
             </Text>
           )}
         </View>
-        <Pressable onPress={onClose} hitSlop={12} accessibilityLabel={t.route.a11yClose}>
-          <MaterialCommunityIcons name="close" size={24} color={colors.muted} />
+        <Pressable onPress={onClose} hitSlop={8} style={styles.close} accessibilityLabel={t.route.a11yClose}>
+          <MaterialCommunityIcons name="close" size={18} color={colors.secondary} />
         </Pressable>
       </View>
 
+      <Segmented<RouteProfile>
+        options={[
+          { value: 'safest', label: t.route.safest },
+          { value: 'fastest', label: t.route.fastest },
+        ]}
+        value={profile}
+        onChange={onProfileChange}
+        dir={dir}
+      />
+
       {planning && (
         <View style={[styles.status, dir.row]}>
-          <ActivityIndicator color={colors.primary} />
+          <ActivityIndicator color={colors.ink} />
           <Text style={[styles.statusText, dir.text, { flex: 1 }]}>{t.route.planning}</Text>
         </View>
       )}
 
       {!planning && error && (
         <View style={[styles.status, dir.row]}>
-          <Text style={[styles.statusText, dir.text, { color: colors.danger, flex: 1 }]}>
-            {errorText(error)}
-          </Text>
+          <Text style={[styles.statusText, dir.text, { color: colors.danger, flex: 1 }]}>{errorText(error)}</Text>
           <Pressable onPress={onRetry} style={styles.retry}>
             <Text style={styles.retryText}>{t.route.retry}</Text>
           </Pressable>
@@ -73,36 +91,37 @@ export function RoutePanel({
         <>
           <View style={[styles.summary, dir.row]}>
             <Text style={styles.duration}>{duration(route.duration)}</Text>
-            <Text style={styles.distance}>
-              {distance(route.distance)} · {profileLabel}
-            </Text>
+            <Text style={styles.distance}>{distance(route.distance)}</Text>
+            <View style={{ flex: 1 }} />
+            <Text style={styles.distance}>{t.route.arrive(time(new Date(now + route.duration * 1000)))}</Text>
           </View>
 
-          <View style={[styles.bar, dir.row]}>
-            {MODE_ORDER.map((m) => {
-              const meters = route.byMode[m] ?? 0;
-              if (meters <= 0) return null;
-              return <View key={m} style={{ flex: meters, backgroundColor: MODE_STYLE[m].color }} />;
-            })}
-          </View>
-          <View style={[styles.legend, dir.row]}>
-            {MODE_ORDER.map((m) => {
-              const meters = route.byMode[m] ?? 0;
-              if (meters < 1) return null;
-              return (
-                <View key={m} style={[styles.legendItem, dir.row]}>
-                  <View style={[styles.dot, { backgroundColor: MODE_STYLE[m].color }]} />
-                  <Text style={styles.legendText}>
-                    {t.modes[m]} · {distance(meters)}
-                  </Text>
-                </View>
-              );
-            })}
+          <View style={{ gap: 12 }}>
+            <View style={[styles.bar, dir.row]}>
+              {MODE_ORDER.map((m) => {
+                const meters = route.byMode[m] ?? 0;
+                if (meters <= 0) return null;
+                return <View key={m} style={[styles.barPart, { flex: meters, backgroundColor: MODE_STYLE[m].color }]} />;
+              })}
+            </View>
+            <View style={[styles.legend, dir.row]}>
+              {MODE_ORDER.map((m) => {
+                const meters = route.byMode[m] ?? 0;
+                if (meters < 1) return null;
+                return (
+                  <View key={m} style={[styles.legendItem, dir.row]}>
+                    <View style={[styles.dot, { backgroundColor: MODE_STYLE[m].color }]} />
+                    <Text style={styles.legendText}>{t.modes[m]}</Text>
+                    <Text style={styles.legendDistance}>{distance(meters)}</Text>
+                  </View>
+                );
+              })}
+            </View>
           </View>
 
           {route.inferredSpeedMeters > 50 && (
             <View style={[styles.warning, dir.row]}>
-              <MaterialCommunityIcons name="alert-outline" size={18} color={colors.warning} />
+              <MaterialCommunityIcons name="alert-outline" size={18} color={colors.cautionIcon} />
               <Text style={[styles.warningText, dir.text]}>
                 {t.route.inferredSpeed(distance(route.inferredSpeedMeters))}
               </Text>
@@ -110,75 +129,79 @@ export function RoutePanel({
           )}
 
           <Pressable
-            style={({ pressed }) => [styles.start, dir.row, pressed && { backgroundColor: colors.primaryDark }]}
+            style={({ pressed }) => [styles.start, dir.row, pressed && styles.startPressed]}
             onPress={onStart}
             accessibilityLabel={t.route.a11yStart}
           >
-            <MaterialCommunityIcons name="navigation" size={22} color="#fff" />
+            <MaterialCommunityIcons name="navigation-variant" size={22} color="#fff" />
             <Text style={styles.startText}>{t.route.start}</Text>
           </Pressable>
         </>
       )}
-    </View>
+    </Glass>
   );
 }
 
 const styles = StyleSheet.create({
   panel: {
     position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: colors.surface,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingHorizontal: 18,
-    paddingTop: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 12,
+    left: 8,
+    right: 8,
+    bottom: 8,
+    borderRadius: 40,
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    gap: 16,
   },
+  grabber: { alignSelf: 'center', width: 36, height: 5, borderRadius: 3, backgroundColor: 'rgba(60,60,67,0.22)' },
   header: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
-  title: { fontSize: 19, fontWeight: '700', color: colors.text },
-  subtitle: { fontSize: 14, color: colors.muted, marginTop: 2 },
-  status: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 18 },
-  statusText: { fontSize: 15, color: colors.muted },
-  retry: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10, backgroundColor: '#f1f5f9' },
-  retryText: { color: colors.primary, fontWeight: '600' },
-  summary: { flexDirection: 'row', alignItems: 'baseline', gap: 10, marginTop: 14 },
-  duration: { fontSize: 26, fontWeight: '800', color: colors.primary },
-  distance: { fontSize: 16, color: colors.muted },
-  bar: {
-    flexDirection: 'row',
-    height: 8,
-    borderRadius: 4,
-    overflow: 'hidden',
-    marginTop: 12,
-    backgroundColor: colors.border,
+  title: { fontSize: 21, fontWeight: '700', letterSpacing: -0.2, color: colors.text },
+  subtitle: { fontSize: 14, color: colors.muted },
+  close: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: colors.fill,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  legend: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 10 },
-  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  dot: { width: 10, height: 10, borderRadius: 5 },
+  status: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8 },
+  statusText: { fontSize: 15, lineHeight: 21, color: colors.muted },
+  retry: { paddingHorizontal: 16, height: 36, justifyContent: 'center', borderRadius: 18, backgroundColor: colors.fill },
+  retryText: { color: colors.ink, fontWeight: '600', fontSize: 15 },
+  summary: { flexDirection: 'row', alignItems: 'baseline', gap: 10 },
+  duration: { fontSize: 38, fontWeight: '700', letterSpacing: -0.8, color: colors.text, fontVariant: ['tabular-nums'] },
+  distance: { fontSize: 16, color: colors.muted, fontVariant: ['tabular-nums'] },
+  bar: { flexDirection: 'row', height: 6, gap: 3 },
+  barPart: { borderRadius: 3 },
+  legend: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 16, rowGap: 6 },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  dot: { width: 8, height: 8, borderRadius: 4 },
   legendText: { fontSize: 13, color: colors.text },
+  legendDistance: { fontSize: 13, color: colors.muted, fontVariant: ['tabular-nums'] },
   warning: {
     flexDirection: 'row',
-    gap: 8,
-    marginTop: 12,
-    padding: 10,
-    borderRadius: 10,
-    backgroundColor: colors.warningBg,
+    alignItems: 'flex-start',
+    gap: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 16,
+    backgroundColor: colors.cautionBg,
   },
-  warningText: { flex: 1, fontSize: 13, color: colors.warning },
+  warningText: { flex: 1, fontSize: 13, lineHeight: 18, color: colors.caution },
   start: {
-    marginTop: 16,
-    height: 54,
-    borderRadius: 14,
-    backgroundColor: colors.primary,
+    height: 58,
+    borderRadius: 29,
+    backgroundColor: colors.ink,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: 10,
+    shadowColor: colors.ink,
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
   },
-  startText: { color: '#fff', fontSize: 18, fontWeight: '700' },
+  startPressed: { transform: [{ scale: 0.98 }], backgroundColor: '#26262B' },
+  startText: { color: '#fff', fontSize: 18, fontWeight: '600' },
 });

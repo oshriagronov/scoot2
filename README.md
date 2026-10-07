@@ -8,6 +8,17 @@ Voice-guided navigation for electric scooters and e-bikes. It only routes where 
 
 Motorways, steps, and anything tagged as closed to bikes are never used.
 
+<p align="center">
+  <img src="docs/screenshots/home.jpg" width="16%" alt="Map with a glass search bar">
+  <img src="docs/screenshots/search.jpg" width="16%" alt="Search results in a glass card">
+  <img src="docs/screenshots/route.jpg" width="16%" alt="Route preview sheet with the route split by lane type">
+  <img src="docs/screenshots/ride.jpg" width="16%" alt="Riding screen with the next turn">
+  <img src="docs/screenshots/ride-night.jpg" width="16%" alt="Riding screen in dark mode">
+  <img src="docs/screenshots/settings.jpg" width="16%" alt="Settings">
+</p>
+
+The interface uses iOS Liquid Glass (`expo-glass-effect`) for everything that floats over the map: neutral ink and white surfaces, with color kept for meaning (your position, the type of each route section, ending a ride, cautions). The riding screen follows the phone's appearance: light glass over the normal map, or a dark map with night glass when the phone is in dark mode. On Android and older iOS versions the same surfaces are drawn as translucent panels.
+
 Built with Expo (SDK 57) and React Native. The map is [MapLibre](https://maplibre.org) with free OpenStreetMap map tiles from [OpenFreeMap](https://openfreemap.org): no account, no API key, the same map on iPhone and Android. The route is computed on the phone, from OpenStreetMap road data:
 
 - **Road tiles** (preferred): pre-built files rebuilt weekly by a GitHub Action and served from Cloudflare Pages for free. Only the tiles a route needs are downloaded, and they stay on the phone for offline use. See [pipeline/README.md](pipeline/README.md).
@@ -63,6 +74,7 @@ npx expo lint
 | Spoken phrases (Hebrew and English) | `src/i18n/phrases.ts` |
 | Screen text and right-to-left layout (Hebrew and English) | `src/i18n/strings.ts` |
 | Map (MapLibre + OpenFreeMap), route drawing, camera | `src/components/RouteMap.tsx` |
+| Colors, glass surfaces and shared controls | `src/components/theme.ts`, `src/components/Glass.tsx`, `src/components/controls.tsx` |
 | Location while locked (background task), voice audio session | `src/navigation/backgroundLocation.ts`, `src/navigation/voice.ts` |
 | Screens | `src/app/index.tsx` (map), `src/app/settings.tsx` |
 

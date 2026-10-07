@@ -33,6 +33,7 @@ const en = {
     inferredSpeed: (distance: string) =>
       `${distance} on roads without a speed limit in the map data. Check the signs as you ride.`,
     start: 'Start',
+    arrive: (time: string) => `Arrive ${time}`,
     a11yStart: 'Start navigation',
   },
   errors: {
@@ -73,6 +74,7 @@ const en = {
   } satisfies Record<TravelMode | 'connector', string>,
   settings: {
     title: 'Settings',
+    a11yClose: 'Close settings',
     sectionLanguage: 'Language and voice',
     language: 'Language',
     languageDetail: 'For the screens and the voice guidance.',
@@ -130,6 +132,7 @@ const he: Strings = {
     inferredSpeed: (distance: string) =>
       `${distance} בכבישים ללא מגבלת מהירות בנתוני המפה. שימו לב לשלטים בדרך.`,
     start: 'יוצאים',
+    arrive: (time: string) => `הגעה ${time}`,
     a11yStart: 'התחלת ניווט',
   },
   errors: {
@@ -169,6 +172,7 @@ const he: Strings = {
   },
   settings: {
     title: 'הגדרות',
+    a11yClose: 'סגירת ההגדרות',
     sectionLanguage: 'שפה וקול',
     language: 'שפה',
     languageDetail: 'למסכים ולהנחיות הקוליות.',

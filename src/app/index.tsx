@@ -1,8 +1,11 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
-import { Keyboard, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Keyboard, Linking, Pressable, StyleSheet, Text, useColorScheme, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { GlassButton } from '../components/controls';
+import { Glass } from '../components/Glass';
 import { ManeuverBanner, NavigationFooter } from '../components/NavigationHUD';
 import { RoutePanel } from '../components/RoutePanel';
 import { RouteMap, type RouteMapHandle } from '../components/RouteMap';
@@ -23,6 +26,7 @@ const FOLLOW_TOP_PADDING = 260;
 export default function MapScreen() {
   const { settings, update } = useSettings();
   const insets = useSafeAreaInsets();
+  const darkMode = useColorScheme() === 'dark';
   const mapRef = useRef<RouteMapHandle>(null);
   const nav = useNavigation(settings);
 
@@ -78,7 +82,7 @@ export default function MapScreen() {
   // Show the whole route when previewing it.
   useEffect(() => {
     if (!nav.route || nav.navigating) return;
-    mapRef.current?.showRoute(nav.route, { top: insets.top + 120, bottom: 420 });
+    mapRef.current?.showRoute(nav.route, { top: insets.top + 60, bottom: 470 });
   }, [nav.route, nav.navigating, insets.top]);
 
   const selectPlace = (place: Place) => {
@@ -111,6 +115,7 @@ export default function MapScreen() {
 
   return (
     <View style={styles.container}>
+      <StatusBar style={nav.navigating && darkMode ? 'light' : 'dark'} />
       <RouteMap
         ref={mapRef}
         route={nav.route}
@@ -143,30 +148,35 @@ export default function MapScreen() {
         </>
       ) : (
         <>
-          <View style={[styles.top, { top: insets.top + 8 }]}>
-            <SearchBar
-              key={searchKey}
-              near={here}
-              onSelect={selectPlace}
-              onOpenSettings={() => router.push('/settings')}
-              hint={nav.destination ? undefined : t.search.hint}
-            />
-            {device.permission === 'denied' && (
-              <Pressable style={[styles.permission, dir.row]} onPress={() => Linking.openSettings()}>
-                <MaterialCommunityIcons name="map-marker-off" size={18} color={colors.warning} />
-                <Text style={[styles.permissionText, dir.text]}>{t.map.locationOff}</Text>
-              </Pressable>
-            )}
-          </View>
+          {!nav.destination && (
+            <View style={[styles.top, { top: insets.top + 8 }]}>
+              <SearchBar
+                key={searchKey}
+                near={here}
+                onSelect={selectPlace}
+                onOpenSettings={() => router.push('/settings')}
+                hint={t.search.hint}
+              />
+              {device.permission === 'denied' && (
+                <Pressable onPress={() => Linking.openSettings()} style={styles.permissionWrap}>
+                  <Glass style={[styles.permission, dir.row]}>
+                    <MaterialCommunityIcons name="map-marker-off-outline" size={18} color={colors.cautionIcon} />
+                    <Text style={[styles.permissionText, dir.text]}>{t.map.locationOff}</Text>
+                  </Glass>
+                </Pressable>
+              )}
+            </View>
+          )}
 
           {!nav.destination && (
-            <Pressable
-              style={[styles.fab, { bottom: insets.bottom + 28 }]}
+            <GlassButton
+              size={56}
               onPress={recenter}
               accessibilityLabel={t.map.a11yMyLocation}
+              style={[styles.fab, { bottom: insets.bottom + 28 }, dir.rtl ? { left: 16 } : { right: 16 }]}
             >
-              <MaterialCommunityIcons name="crosshairs-gps" size={24} color={colors.primary} />
-            </Pressable>
+              <MaterialCommunityIcons name="near-me" size={24} color={colors.accent} />
+            </GlassButton>
           )}
 
           {nav.destination && (
@@ -175,8 +185,9 @@ export default function MapScreen() {
               route={nav.route}
               planning={nav.planning}
               error={nav.error}
-              profileLabel={settings.profile === 'safest' ? t.route.safest : t.route.fastest}
+              profile={settings.profile}
               bottomInset={insets.bottom}
+              onProfileChange={(profile) => update({ profile })}
               onStart={() => {
                 setFollowing(true);
                 nav.start();
@@ -192,10 +203,10 @@ export default function MapScreen() {
         style={[
           styles.attribution,
           nav.navigating
-            ? { top: insets.top + 170, right: 8 }
+            ? [darkMode && styles.attributionNight, { top: insets.top + 215 }, dir.rtl ? { right: 16 } : { left: 16 }]
             : nav.destination
-              ? { top: insets.top + 64, right: 8 }
-              : { bottom: insets.bottom + 4, right: 8 },
+              ? { top: insets.top + 12, right: 16 }
+              : { bottom: insets.bottom + 4, right: 16 },
         ]}
       >
         {t.map.attribution}
@@ -205,40 +216,28 @@ export default function MapScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#e5e7eb' },
-  top: { position: 'absolute', left: 0, right: 0 },
+  container: { flex: 1, backgroundColor: '#EDECE8' },
+  top: { position: 'absolute', left: 0, right: 0, gap: 10 },
+  permissionWrap: { marginHorizontal: 16 },
   permission: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginHorizontal: 12,
-    marginTop: 8,
-    padding: 10,
-    borderRadius: 12,
-    backgroundColor: colors.warningBg,
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 18,
   },
-  permissionText: { flex: 1, color: colors.warning, fontSize: 14 },
-  fab: {
-    position: 'absolute',
-    right: 16,
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-  },
+  permissionText: { flex: 1, color: colors.caution, fontSize: 14, lineHeight: 19 },
+  fab: { position: 'absolute' },
   attribution: {
     position: 'absolute',
-    fontSize: 10,
-    color: '#334155',
-    backgroundColor: 'rgba(255,255,255,0.7)',
-    paddingHorizontal: 4,
-    borderRadius: 3,
+    fontSize: 10.5,
+    color: colors.secondary,
+    backgroundColor: 'rgba(255,255,255,0.78)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
     overflow: 'hidden',
   },
+  attributionNight: { color: 'rgba(255,255,255,0.55)', backgroundColor: 'transparent', paddingHorizontal: 0 },
 });

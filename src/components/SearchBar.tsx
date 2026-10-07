@@ -9,9 +9,11 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import type { LatLng } from '../routing/geo';
+import { distanceLL, type LatLng } from '../routing/geo';
 import { useStrings } from '../i18n/strings';
 import { searchPlaces, type Place } from '../services/geocode';
+import { GlassButton } from './controls';
+import { Glass } from './Glass';
 import { colors } from './theme';
 
 /** Wait this long after the last keystroke before searching. */
@@ -27,7 +29,7 @@ interface Props {
 }
 
 export function SearchBar({ near, onSelect, onOpenSettings, hint }: Props) {
-  const { t, dir, lang } = useStrings();
+  const { t, dir, lang, distance } = useStrings();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Place[] | null>(null);
   const [loading, setLoading] = useState(false);
@@ -89,44 +91,56 @@ export function SearchBar({ near, onSelect, onOpenSettings, hint }: Props) {
 
   return (
     <View style={styles.wrap}>
-      <View style={[styles.bar, dir.row]}>
-        <MaterialCommunityIcons name="magnify" size={22} color={colors.muted} />
-        <TextInput
-          style={[styles.input, dir.text]}
-          placeholder={t.search.placeholder}
-          placeholderTextColor={colors.muted}
-          value={query}
-          onChangeText={onChangeText}
-          // Takes the text from the event: state may lag behind fast typing.
-          onSubmitEditing={(e) => {
-            if (debounce.current) clearTimeout(debounce.current);
-            search(e.nativeEvent.text, 'submit');
-          }}
-          returnKeyType="search"
-          autoCorrect={false}
-          accessibilityLabel={t.search.a11ySearch}
-        />
-        {loading ? (
-          <ActivityIndicator color={colors.primary} />
-        ) : query ? (
-          <Pressable onPress={reset} hitSlop={10} accessibilityLabel={t.search.a11yClear}>
-            <MaterialCommunityIcons name="close" size={20} color={colors.muted} />
-          </Pressable>
-        ) : null}
-        <Pressable onPress={onOpenSettings} hitSlop={10} style={styles.gear} accessibilityLabel={t.search.a11ySettings}>
-          <MaterialCommunityIcons name="cog" size={22} color={colors.text} />
-        </Pressable>
+      <View style={[styles.top, dir.row]}>
+        <Glass style={[styles.bar, dir.row]}>
+          <MaterialCommunityIcons name="magnify" size={22} color={colors.secondary} />
+          <TextInput
+            style={[styles.input, dir.text]}
+            placeholder={t.search.placeholder}
+            placeholderTextColor={colors.muted}
+            value={query}
+            onChangeText={onChangeText}
+            // Takes the text from the event: state may lag behind fast typing.
+            onSubmitEditing={(e) => {
+              if (debounce.current) clearTimeout(debounce.current);
+              search(e.nativeEvent.text, 'submit');
+            }}
+            returnKeyType="search"
+            autoCorrect={false}
+            selectionColor={colors.accent}
+            accessibilityLabel={t.search.a11ySearch}
+          />
+          {loading ? (
+            <ActivityIndicator color={colors.ink} style={styles.trailing} />
+          ) : query ? (
+            <Pressable onPress={reset} hitSlop={10} style={styles.trailing} accessibilityLabel={t.search.a11yClear}>
+              <View style={styles.clear}>
+                <MaterialCommunityIcons name="close" size={13} color="#fff" />
+              </View>
+            </Pressable>
+          ) : null}
+        </Glass>
+        <GlassButton onPress={onOpenSettings} accessibilityLabel={t.search.a11ySettings}>
+          <MaterialCommunityIcons name="tune-variant" size={22} color={colors.ink} />
+        </GlassButton>
       </View>
 
-      {!!hint && !query && !results && !error && <Text style={styles.hint}>{hint}</Text>}
+      {!!hint && !query && !results && !error && (
+        <Glass style={[styles.hint, dir.start]}>
+          <Text style={[styles.hintText, dir.text]}>{hint}</Text>
+        </Glass>
+      )}
 
       {(results?.length || error) && (
-        <View style={styles.results}>
+        <Glass variant="thick" style={styles.results}>
           {error && <Text style={[styles.error, dir.text]}>{t.search[error]}</Text>}
           <FlatList
             data={results ?? []}
             keyExtractor={(p) => p.id}
             keyboardShouldPersistTaps="handled"
+            ItemSeparatorComponent={() => (
+              <View style={[styles.separator, dir.rtl ? { marginRight: 70 } : { marginLeft: 70 }]} />
+            )}
             renderItem={({ item }) => (
               <Pressable
                 style={({ pressed }) => [styles.row, dir.row, pressed && styles.rowPressed]}
@@ -138,68 +152,68 @@ export function SearchBar({ near, onSelect, onOpenSettings, hint }: Props) {
                   onSelect(item);
                 }}
               >
-                <MaterialCommunityIcons name="map-marker" size={20} color={colors.primary} />
+                <View style={styles.tile}>
+                  <MaterialCommunityIcons name="map-marker-outline" size={20} color={colors.ink} />
+                </View>
                 <View style={styles.rowText}>
                   <Text style={[styles.title, dir.text]} numberOfLines={1}>
                     {item.title}
                   </Text>
-                  <Text style={[styles.subtitle, dir.text]} numberOfLines={1}>
-                    {item.subtitle}
-                  </Text>
+                  {!!item.subtitle && (
+                    <Text style={[styles.subtitle, dir.text]} numberOfLines={1}>
+                      {item.subtitle}
+                    </Text>
+                  )}
                 </View>
+                {near && <Text style={styles.away}>{distance(distanceLL(near, item.location))}</Text>}
               </Pressable>
             )}
           />
-        </View>
+        </Glass>
       )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: { marginHorizontal: 12 },
+  wrap: { marginHorizontal: 16, gap: 10 },
+  top: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   bar: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    backgroundColor: colors.surface,
-    borderRadius: 14,
-    paddingHorizontal: 12,
-    height: 50,
-    shadowColor: '#000',
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 4,
+    gap: 10,
+    height: 54,
+    borderRadius: 27,
+    paddingHorizontal: 18,
   },
-  input: { flex: 1, fontSize: 17, color: colors.text },
-  gear: { paddingHorizontal: 2 },
-  results: {
-    marginTop: 6,
-    backgroundColor: colors.surface,
-    borderRadius: 14,
-    maxHeight: 320,
-    overflow: 'hidden',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
+  input: { flex: 1, height: '100%', fontSize: 17, color: colors.text },
+  trailing: { marginHorizontal: -6 },
+  clear: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#8E8E93',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 12 },
-  rowPressed: { backgroundColor: '#f1f5f9' },
-  rowText: { flex: 1 },
+  hint: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 16, maxWidth: '100%' },
+  hintText: { fontSize: 13, lineHeight: 18, color: colors.secondary },
+  results: { borderRadius: 28, maxHeight: 340, overflow: 'hidden', paddingVertical: 6 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 16, paddingVertical: 11 },
+  rowPressed: { backgroundColor: colors.fill },
+  tile: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: colors.fill,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rowText: { flex: 1, gap: 2 },
   title: { fontSize: 16, fontWeight: '600', color: colors.text },
-  subtitle: { fontSize: 13, color: colors.muted, marginTop: 2 },
-  error: { padding: 14, color: colors.muted },
-  hint: {
-    alignSelf: 'center',
-    marginTop: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 999,
-    backgroundColor: 'rgba(15,23,42,0.75)',
-    color: '#fff',
-    fontSize: 13,
-    overflow: 'hidden',
-  },
+  subtitle: { fontSize: 13, color: colors.muted },
+  away: { fontSize: 13, color: colors.muted, fontVariant: ['tabular-nums'] },
+  separator: { height: StyleSheet.hairlineWidth, backgroundColor: colors.separator, marginHorizontal: 16 },
+  error: { paddingHorizontal: 16, paddingVertical: 12, fontSize: 15, color: colors.muted },
 });

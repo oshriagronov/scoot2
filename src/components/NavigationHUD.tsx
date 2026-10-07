@@ -1,12 +1,13 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useEffect, useState } from 'react';
-import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, useColorScheme, View } from 'react-native';
 import { instructionText } from '../i18n/phrases';
 import { useStrings } from '../i18n/strings';
 import type { Instruction } from '../navigation/instructions';
 import type { TrackState } from '../navigation/tracker';
 import type { Route } from '../routing/router';
-import { colors, MODE_STYLE, turnIcon } from './theme';
+import { Glass } from './Glass';
+import { useClock } from './useClock';
+import { colors, MODE_STYLE, RIDE_DAY, RIDE_NIGHT, turnIcon, type RidePalette } from './theme';
 
 interface BannerProps {
   instructions: Instruction[];
@@ -18,6 +19,7 @@ interface BannerProps {
 /** Next maneuver, shown at the top of the screen while riding. */
 export function ManeuverBanner({ instructions, track, rerouting, topInset }: BannerProps) {
   const { t, dir, lang, distance } = useStrings();
+  const { p, styles } = useRideStyle();
   const index = track?.nextIndex ?? 1;
   const next = instructions[index] ?? instructions[instructions.length - 1];
   const after = instructions[index + 1];
@@ -26,18 +28,19 @@ export function ManeuverBanner({ instructions, track, rerouting, topInset }: Ban
 
   if (rerouting || track?.offRoute) {
     return (
-      <View style={[styles.banner, { paddingTop: topInset + 12, backgroundColor: colors.warning }]}>
-        <Text style={[styles.bannerText, dir.text]}>{t.ride.recalculating}</Text>
-      </View>
+      <Glass variant={p.glass} style={[styles.banner, styles.bannerCompact, dir.row, { top: topInset + 4 }]}>
+        <ActivityIndicator color={p.caution} />
+        <Text style={[styles.bannerText, dir.text, { flex: 1, color: p.text }]}>{t.ride.recalculating}</Text>
+      </Glass>
     );
   }
   if (!next) return null;
 
   return (
-    <View style={[styles.banner, { paddingTop: topInset + 12 }]}>
+    <Glass variant={p.glass} style={[styles.banner, { top: topInset + 4 }]}>
       <View style={[styles.bannerRow, dir.row]}>
         {/* Arrows show the real turn direction, so they are never mirrored. */}
-        <MaterialCommunityIcons name={turnIcon(next.type, next.angle)} size={48} color="#fff" />
+        <MaterialCommunityIcons name={turnIcon(next.type, next.angle)} size={56} color={p.text} />
         <View style={{ flex: 1 }}>
           <Text style={[styles.bannerDistance, dir.text]}>{distance(dist)}</Text>
           <Text style={[styles.bannerText, dir.text]} numberOfLines={2} accessibilityLiveRegion="polite">
@@ -45,19 +48,25 @@ export function ManeuverBanner({ instructions, track, rerouting, topInset }: Ban
           </Text>
         </View>
       </View>
-      <View style={[styles.bannerFooter, dir.row]}>
-        {mode && (
-          <View style={[styles.modePill, { backgroundColor: MODE_STYLE[mode].color }]}>
-            <Text style={styles.modePillText}>{t.ride.now(t.modes[mode])}</Text>
+      {(mode || (after && after.type !== 'arrive')) && (
+        <>
+          <View style={styles.divider} />
+          <View style={[styles.bannerFooter, dir.row]}>
+            {mode && (
+              <View style={[styles.modeChip, dir.row]}>
+                <View style={[styles.modeDot, { backgroundColor: MODE_STYLE[mode].color }]} />
+                <Text style={styles.modeChipText}>{t.ride.now(t.modes[mode])}</Text>
+              </View>
+            )}
+            {after && after.type !== 'arrive' && (
+              <Text style={[styles.then, dir.text]} numberOfLines={1}>
+                {t.ride.then(instructionText(after, lang))}
+              </Text>
+            )}
           </View>
-        )}
-        {after && after.type !== 'arrive' && (
-          <Text style={[styles.then, dir.text]} numberOfLines={1}>
-            {t.ride.then(instructionText(after, lang))}
-          </Text>
-        )}
-      </View>
-    </View>
+        </>
+      )}
+    </Glass>
   );
 }
 
@@ -68,16 +77,6 @@ function currentMode(instructions: Instruction[], nextIndex: number) {
     if (m && m !== 'crossing') return m;
   }
   return null;
-}
-
-/** Current time, refreshed every `intervalMs`. */
-function useClock(intervalMs: number) {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), intervalMs);
-    return () => clearInterval(id);
-  }, [intervalMs]);
-  return now;
 }
 
 interface FooterProps {
@@ -106,6 +105,7 @@ export function NavigationFooter({
   lockedScreenOff,
 }: FooterProps) {
   const { t, dir, distance, duration, time } = useStrings();
+  const { p, styles } = useRideStyle();
   const now = useClock(15000);
   const remaining = track?.remaining ?? route.distance;
   const remainingTime = route.distance > 0 ? (route.duration * remaining) / route.distance : 0;
@@ -113,122 +113,139 @@ export function NavigationFooter({
   const arrived = track?.arrived;
 
   return (
-    <View style={[styles.footer, { paddingBottom: bottomInset + 12 }]}>
+    <View style={[styles.footer, { bottom: Math.max(bottomInset - 16, 12) }]}>
       {!following && (
         <Pressable
-          style={[styles.recenter, dir.row, dir.rtl ? { left: 16 } : { right: 16 }]}
+          style={({ pressed }) => [dir.rtl ? styles.alignLeft : styles.alignRight, pressed && styles.pressed]}
           onPress={onRecenter}
           accessibilityLabel={t.ride.a11yRecenter}
         >
-          <MaterialCommunityIcons name="crosshairs-gps" size={22} color={colors.primary} />
-          <Text style={styles.recenterText}>{t.ride.recenter}</Text>
+          <Glass variant={p.glass} interactive style={[styles.recenter, dir.row]}>
+            <MaterialCommunityIcons name="navigation-variant" size={18} color={colors.accent} />
+            <Text style={styles.recenterText}>{t.ride.recenter}</Text>
+          </Glass>
         </Pressable>
       )}
-      {lockedScreenOff && (
-        <Pressable style={[styles.notice, dir.row]} onPress={() => Linking.openSettings()}>
-          <MaterialCommunityIcons name="lock-alert-outline" size={18} color={colors.warning} />
-          <Text style={[styles.noticeText, dir.text]}>{t.ride.lockedNotice}</Text>
-        </Pressable>
-      )}
-      <View style={[styles.footerRow, dir.row]}>
-        <Pressable
-          onPress={onToggleMute}
-          style={styles.iconButton}
-          accessibilityLabel={muted ? t.ride.a11yUnmute : t.ride.a11yMute}
-        >
-          <MaterialCommunityIcons name={muted ? 'volume-off' : 'volume-high'} size={26} color={colors.text} />
-        </Pressable>
-        <View style={{ flex: 1, alignItems: 'center' }}>
-          {arrived ? (
-            <Text style={styles.eta}>{t.ride.arrived}</Text>
-          ) : (
-            <>
-              <Text style={styles.eta}>{time(eta)}</Text>
-              <Text style={styles.remaining}>
-                {duration(remainingTime)} · {distance(remaining)}
-              </Text>
-            </>
-          )}
+      <Glass variant={p.glass} style={styles.footerBar}>
+        {lockedScreenOff && (
+          <Pressable style={[styles.notice, dir.row]} onPress={() => Linking.openSettings()}>
+            <MaterialCommunityIcons name="lock-alert-outline" size={18} color={p.caution} />
+            <Text style={[styles.noticeText, dir.text]}>{t.ride.lockedNotice}</Text>
+          </Pressable>
+        )}
+        <View style={[styles.footerRow, dir.row]}>
+          <Pressable
+            onPress={onToggleMute}
+            style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
+            accessibilityLabel={muted ? t.ride.a11yUnmute : t.ride.a11yMute}
+          >
+            <MaterialCommunityIcons name={muted ? 'volume-off' : 'volume-high'} size={24} color={p.text} />
+          </Pressable>
+          <View style={{ flex: 1, alignItems: 'center' }}>
+            {arrived ? (
+              <Text style={styles.arrived}>{t.ride.arrived}</Text>
+            ) : (
+              <>
+                <Text style={styles.eta}>{time(eta)}</Text>
+                <Text style={styles.remaining}>
+                  {duration(remainingTime)} · {distance(remaining)}
+                </Text>
+              </>
+            )}
+          </View>
+          <Pressable
+            onPress={onEnd}
+            style={({ pressed }) => [styles.end, arrived && styles.done, pressed && styles.pressed]}
+            accessibilityLabel={t.ride.a11yEnd}
+          >
+            <Text style={[styles.endText, arrived && { color: p.onDone }]}>{arrived ? t.ride.done : t.ride.end}</Text>
+          </Pressable>
         </View>
-        <Pressable onPress={onEnd} style={[styles.iconButton, styles.end]} accessibilityLabel={t.ride.a11yEnd}>
-          <Text style={styles.endText}>{arrived ? t.ride.done : t.ride.end}</Text>
-        </Pressable>
-      </View>
+      </Glass>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+/** Day or night riding style, following the phone's appearance. */
+function useRideStyle() {
+  return useColorScheme() === 'dark' ? NIGHT : DAY;
+}
+
+function createStyles(p: RidePalette) {
+  return StyleSheet.create({
   banner: {
     position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: colors.banner,
-    paddingHorizontal: 16,
-    paddingBottom: 14,
-    borderBottomLeftRadius: 18,
-    borderBottomRightRadius: 18,
+    left: 10,
+    right: 10,
+    borderRadius: 34,
+    paddingHorizontal: 20,
+    paddingTop: 18,
+    paddingBottom: 16,
   },
-  bannerRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  bannerDistance: { color: '#fff', fontSize: 30, fontWeight: '800' },
-  bannerText: { color: '#e2e8f0', fontSize: 18, fontWeight: '600' },
-  bannerFooter: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 10 },
-  modePill: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
-  modePillText: { color: '#fff', fontWeight: '700', fontSize: 13 },
-  then: { flex: 1, color: '#94a3b8', fontSize: 14 },
-  footer: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: colors.surface,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingHorizontal: 16,
-    paddingTop: 14,
-    shadowColor: '#000',
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 12,
+  bannerCompact: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingBottom: 18 },
+  bannerRow: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  bannerDistance: {
+    color: p.text,
+    fontSize: 44,
+    fontWeight: '600',
+    letterSpacing: -1.2,
+    fontVariant: ['tabular-nums'],
   },
-  footerRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  notice: {
+  bannerText: { color: p.secondary, fontSize: 19, fontWeight: '500', lineHeight: 25 },
+  divider: { height: StyleSheet.hairlineWidth, backgroundColor: p.divider, marginVertical: 14 },
+  bannerFooter: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  modeChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    padding: 10,
-    marginBottom: 10,
-    borderRadius: 10,
-    backgroundColor: colors.warningBg,
-  },
-  noticeText: { flex: 1, fontSize: 13, color: colors.warning },
-  iconButton: {
-    height: 52,
-    minWidth: 52,
+    gap: 7,
+    paddingHorizontal: 11,
+    paddingVertical: 6,
     borderRadius: 14,
-    backgroundColor: '#f1f5f9',
+    backgroundColor: p.fill,
+  },
+  modeDot: { width: 8, height: 8, borderRadius: 4 },
+  modeChipText: { color: p.text, fontWeight: '600', fontSize: 13 },
+  then: { flex: 1, color: p.muted, fontSize: 13 },
+  footer: { position: 'absolute', left: 10, right: 10, gap: 10 },
+  footerBar: { borderRadius: 40, padding: 12, gap: 10 },
+  footerRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  notice: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 8, paddingTop: 4 },
+  noticeText: { flex: 1, fontSize: 13, lineHeight: 18, color: p.caution },
+  iconButton: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: p.fill,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 12,
   },
-  end: { backgroundColor: colors.danger },
-  endText: { color: '#fff', fontWeight: '700', fontSize: 17 },
-  eta: { fontSize: 24, fontWeight: '800', color: colors.text },
-  remaining: { fontSize: 15, color: colors.muted, marginTop: 2 },
+  end: {
+    height: 56,
+    paddingHorizontal: 26,
+    borderRadius: 28,
+    backgroundColor: colors.danger,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  done: { backgroundColor: p.done },
+  endText: { color: p.text, fontWeight: '600', fontSize: 17 },
+  eta: { fontSize: 28, fontWeight: '600', letterSpacing: -0.5, color: p.text, fontVariant: ['tabular-nums'] },
+  remaining: { fontSize: 14, color: p.muted, marginTop: 1, fontVariant: ['tabular-nums'] },
+  arrived: { fontSize: 20, fontWeight: '600', color: p.text },
+  pressed: { transform: [{ scale: 0.96 }] },
+  alignLeft: { alignSelf: 'flex-start' },
+  alignRight: { alignSelf: 'flex-end' },
   recenter: {
-    position: 'absolute',
-    top: -56,
+    flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: colors.surface,
-    paddingHorizontal: 14,
+    paddingHorizontal: 16,
     height: 44,
     borderRadius: 22,
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
   },
-  recenterText: { color: colors.primary, fontWeight: '700' },
+  recenterText: { color: p.text, fontWeight: '600', fontSize: 15 },
 });
+}
+
+const DAY = { p: RIDE_DAY, styles: createStyles(RIDE_DAY) };
+const NIGHT = { p: RIDE_NIGHT, styles: createStyles(RIDE_NIGHT) };

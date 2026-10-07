@@ -10,7 +10,7 @@ import {
   type LngLat,
 } from '@maplibre/maplibre-react-native';
 import { useImperativeHandle, useMemo, useRef, type Ref } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, useColorScheme, View } from 'react-native';
 import type { DeviceFix } from '../navigation/useDeviceLocation';
 import type { LatLng } from '../routing/geo';
 import type { Route } from '../routing/router';
@@ -21,6 +21,8 @@ import { colors, MODE_STYLE } from './theme';
  * The same data the routes are planned on, so bike lanes on screen match the route.
  */
 const MAP_STYLE = 'https://tiles.openfreemap.org/styles/liberty';
+/** Night map for riding while the phone is in dark mode. */
+const RIDE_MAP_STYLE = 'https://tiles.openfreemap.org/styles/dark';
 
 /** Shown until the first location fix arrives (Tel Aviv). */
 const INITIAL_CENTER: LngLat = [34.7818, 32.0853];
@@ -53,6 +55,8 @@ interface Props {
 
 export function RouteMap({ route, destination, simulatedFix, navigating, onLongPress, onUserPan, ref }: Props) {
   const camera = useRef<CameraRef>(null);
+  const scheme = useColorScheme();
+  const night = navigating && scheme === 'dark';
 
   useImperativeHandle(
     ref,
@@ -112,10 +116,10 @@ export function RouteMap({ route, destination, simulatedFix, navigating, onLongP
   return (
     <Map
       style={StyleSheet.absoluteFill}
-      mapStyle={MAP_STYLE}
+      mapStyle={night ? RIDE_MAP_STYLE : MAP_STYLE}
       logo={false}
       compass={!navigating}
-      compassPosition={{ top: 140, right: 12 }}
+      compassPosition={{ top: 190, right: 16 }}
       // OpenFreeMap and OpenStreetMap require attribution; this shows the map's credits button.
       attribution
       attributionPosition={{ bottom: 4, left: 8 }}
@@ -137,14 +141,14 @@ export function RouteMap({ route, destination, simulatedFix, navigating, onLongP
             id="route-casing"
             type="line"
             layout={{ 'line-join': 'round', 'line-cap': 'round' }}
-            paint={{ 'line-color': '#ffffff', 'line-width': 10 }}
+            paint={{ 'line-color': night ? '#0B0C0F' : '#ffffff', 'line-width': 11 }}
           />
           <Layer
             id="route-line"
             type="line"
             filter={['!', ['get', 'dashed']]}
             layout={{ 'line-join': 'round', 'line-cap': 'round' }}
-            paint={{ 'line-color': ['get', 'color'], 'line-width': 6 }}
+            paint={{ 'line-color': ['get', 'color'], 'line-width': 7 }}
           />
           <Layer
             id="route-walk"
@@ -158,7 +162,12 @@ export function RouteMap({ route, destination, simulatedFix, navigating, onLongP
 
       {destination && (
         <Marker id="destination" lngLat={lngLat(destination)} anchor="bottom">
-          <MaterialCommunityIcons name="map-marker" size={44} color={colors.danger} />
+          <View style={styles.pin}>
+            <View style={styles.pinHead}>
+              <View style={styles.pinDot} />
+            </View>
+            <View style={styles.pinStem} />
+          </View>
         </Marker>
       )}
 
@@ -166,7 +175,7 @@ export function RouteMap({ route, destination, simulatedFix, navigating, onLongP
         <Marker id="simulated-rider" lngLat={lngLat(simulatedFix)} anchor="center">
           {/* The camera turns with the rider, so the arrow always points up. */}
           <View style={styles.simDot}>
-            <MaterialCommunityIcons name="navigation" size={22} color="#fff" />
+            <MaterialCommunityIcons name="navigation" size={20} color="#fff" />
           </View>
         </Marker>
       )}
@@ -179,10 +188,31 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: colors.primary,
+    backgroundColor: colors.accent,
     borderWidth: 3,
     borderColor: '#fff',
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
   },
+  pin: { alignItems: 'center' },
+  pinHead: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: colors.ink,
+    borderWidth: 2.5,
+    borderColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+  },
+  pinDot: { width: 9, height: 9, borderRadius: 4.5, backgroundColor: '#fff' },
+  pinStem: { width: 3, height: 10, marginTop: -1, borderRadius: 1.5, backgroundColor: colors.ink },
 });

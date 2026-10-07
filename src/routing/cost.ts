@@ -2,6 +2,9 @@ import type { TravelMode, WayClass } from './rules';
 
 export type RouteProfile = 'safest' | 'fastest';
 
+/** Typical e-scooter and e-bike riding speed in km/h, for planning and arrival times. */
+export const CRUISE_SPEED_KMH = 20;
+
 export interface CostOptions {
   profile: RouteProfile;
   /** The rider's normal cruising speed in km/h. */

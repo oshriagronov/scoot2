@@ -1,17 +1,18 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { Appearance as SystemAppearance } from 'react-native';
 import type { Language } from '../i18n/phrases';
 import type { RouteProfile } from '../routing/cost';
+
+export type Appearance = 'system' | 'light' | 'dark';
 
 export interface Settings {
   voiceEnabled: boolean;
   /** Language of the screens and the voice guidance. */
   language: Language;
+  /** Light or dark screens, or follow the phone. */
+  appearance: Appearance;
   profile: RouteProfile;
-  /** Cruising speed in km/h, used for timing estimates. */
-  cruiseSpeed: number;
-  /** Treat main roads without a speed sign in the map data as above 50 km/h. */
-  strictUnknown: boolean;
   /** Replays the route with a simulated position instead of GPS. */
   simulate: boolean;
 }
@@ -19,9 +20,8 @@ export interface Settings {
 export const DEFAULT_SETTINGS: Settings = {
   voiceEnabled: true,
   language: 'he',
+  appearance: 'system',
   profile: 'safest',
-  cruiseSpeed: 20,
-  strictUnknown: true,
   simulate: false,
 };
 
@@ -47,6 +47,11 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       .catch(() => {})
       .finally(() => setLoaded(true));
   }, []);
+
+  // Overrides the color scheme for the whole app, including native controls and useColorScheme().
+  useEffect(() => {
+    SystemAppearance.setColorScheme(settings.appearance === 'system' ? 'unspecified' : settings.appearance);
+  }, [settings.appearance]);
 
   const update = useCallback((patch: Partial<Settings>) => {
     setSettings((prev) => {

@@ -14,15 +14,15 @@ import { StyleSheet, useColorScheme, View } from 'react-native';
 import type { DeviceFix } from '../navigation/useDeviceLocation';
 import type { LatLng } from '../routing/geo';
 import type { Route } from '../routing/router';
-import { colors, MODE_STYLE } from './theme';
+import { LIGHT, MODE_STYLE } from './theme';
 
 /**
  * Free OpenStreetMap vector map from OpenFreeMap: no account, no API key, no usage limits.
  * The same data the routes are planned on, so bike lanes on screen match the route.
  */
 const MAP_STYLE = 'https://tiles.openfreemap.org/styles/liberty';
-/** Night map for riding while the phone is in dark mode. */
-const RIDE_MAP_STYLE = 'https://tiles.openfreemap.org/styles/dark';
+/** Night map for dark mode. */
+const DARK_MAP_STYLE = 'https://tiles.openfreemap.org/styles/dark';
 
 /** Shown until the first location fix arrives (Tel Aviv). */
 const INITIAL_CENTER: LngLat = [34.7818, 32.0853];
@@ -55,8 +55,7 @@ interface Props {
 
 export function RouteMap({ route, destination, simulatedFix, navigating, onLongPress, onUserPan, ref }: Props) {
   const camera = useRef<CameraRef>(null);
-  const scheme = useColorScheme();
-  const night = navigating && scheme === 'dark';
+  const night = useColorScheme() === 'dark';
 
   useImperativeHandle(
     ref,
@@ -116,7 +115,7 @@ export function RouteMap({ route, destination, simulatedFix, navigating, onLongP
   return (
     <Map
       style={StyleSheet.absoluteFill}
-      mapStyle={night ? RIDE_MAP_STYLE : MAP_STYLE}
+      mapStyle={night ? DARK_MAP_STYLE : MAP_STYLE}
       logo={false}
       compass={!navigating}
       compassPosition={{ top: 190, right: 16 }}
@@ -188,7 +187,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: colors.accent,
+    backgroundColor: LIGHT.accent,
     borderWidth: 3,
     borderColor: '#fff',
     alignItems: 'center',
@@ -203,7 +202,7 @@ const styles = StyleSheet.create({
     width: 30,
     height: 30,
     borderRadius: 15,
-    backgroundColor: colors.ink,
+    backgroundColor: LIGHT.ink,
     borderWidth: 2.5,
     borderColor: '#fff',
     alignItems: 'center',
@@ -214,5 +213,5 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 3 },
   },
   pinDot: { width: 9, height: 9, borderRadius: 4.5, backgroundColor: '#fff' },
-  pinStem: { width: 3, height: 10, marginTop: -1, borderRadius: 1.5, backgroundColor: colors.ink },
+  pinStem: { width: 3, height: 10, marginTop: -1, borderRadius: 1.5, backgroundColor: LIGHT.ink },
 });

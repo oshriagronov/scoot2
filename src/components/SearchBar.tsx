@@ -14,7 +14,7 @@ import { useStrings } from '../i18n/strings';
 import { searchPlaces, type Place } from '../services/geocode';
 import { GlassButton } from './controls';
 import { Glass } from './Glass';
-import { colors } from './theme';
+import { themed } from './theme';
 
 /** Wait this long after the last keystroke before searching. */
 const TYPING_DELAY_MS = 400;
@@ -30,6 +30,7 @@ interface Props {
 
 export function SearchBar({ near, onSelect, onOpenSettings, hint }: Props) {
   const { t, dir, lang, distance } = useStrings();
+  const { c, styles } = useStyles();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Place[] | null>(null);
   const [loading, setLoading] = useState(false);
@@ -93,11 +94,11 @@ export function SearchBar({ near, onSelect, onOpenSettings, hint }: Props) {
     <View style={styles.wrap}>
       <View style={[styles.top, dir.row]}>
         <Glass style={[styles.bar, dir.row]}>
-          <MaterialCommunityIcons name="magnify" size={22} color={colors.secondary} />
+          <MaterialCommunityIcons name="magnify" size={22} color={c.secondary} />
           <TextInput
             style={[styles.input, dir.text]}
             placeholder={t.search.placeholder}
-            placeholderTextColor={colors.muted}
+            placeholderTextColor={c.muted}
             value={query}
             onChangeText={onChangeText}
             // Takes the text from the event: state may lag behind fast typing.
@@ -107,11 +108,11 @@ export function SearchBar({ near, onSelect, onOpenSettings, hint }: Props) {
             }}
             returnKeyType="search"
             autoCorrect={false}
-            selectionColor={colors.accent}
+            selectionColor={c.accent}
             accessibilityLabel={t.search.a11ySearch}
           />
           {loading ? (
-            <ActivityIndicator color={colors.ink} style={styles.trailing} />
+            <ActivityIndicator color={c.ink} style={styles.trailing} />
           ) : query ? (
             <Pressable onPress={reset} hitSlop={10} style={styles.trailing} accessibilityLabel={t.search.a11yClear}>
               <View style={styles.clear}>
@@ -121,7 +122,7 @@ export function SearchBar({ near, onSelect, onOpenSettings, hint }: Props) {
           ) : null}
         </Glass>
         <GlassButton onPress={onOpenSettings} accessibilityLabel={t.search.a11ySettings}>
-          <MaterialCommunityIcons name="tune-variant" size={22} color={colors.ink} />
+          <MaterialCommunityIcons name="tune-variant" size={22} color={c.ink} />
         </GlassButton>
       </View>
 
@@ -153,7 +154,7 @@ export function SearchBar({ near, onSelect, onOpenSettings, hint }: Props) {
                 }}
               >
                 <View style={styles.tile}>
-                  <MaterialCommunityIcons name="map-marker-outline" size={20} color={colors.ink} />
+                  <MaterialCommunityIcons name="map-marker-outline" size={20} color={c.ink} />
                 </View>
                 <View style={styles.rowText}>
                   <Text style={[styles.title, dir.text]} numberOfLines={1}>
@@ -175,7 +176,7 @@ export function SearchBar({ near, onSelect, onOpenSettings, hint }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themed((c) => ({
   wrap: { marginHorizontal: 16, gap: 10 },
   top: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   bar: {
@@ -187,7 +188,7 @@ const styles = StyleSheet.create({
     borderRadius: 27,
     paddingHorizontal: 18,
   },
-  input: { flex: 1, height: '100%', fontSize: 17, color: colors.text },
+  input: { flex: 1, height: '100%', fontSize: 17, color: c.text },
   trailing: { marginHorizontal: -6 },
   clear: {
     width: 20,
@@ -198,22 +199,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   hint: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 16, maxWidth: '100%' },
-  hintText: { fontSize: 13, lineHeight: 18, color: colors.secondary },
+  hintText: { fontSize: 13, lineHeight: 18, color: c.secondary },
   results: { borderRadius: 28, maxHeight: 340, overflow: 'hidden', paddingVertical: 6 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 16, paddingVertical: 11 },
-  rowPressed: { backgroundColor: colors.fill },
+  rowPressed: { backgroundColor: c.fill },
   tile: {
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: colors.fill,
+    backgroundColor: c.fill,
     alignItems: 'center',
     justifyContent: 'center',
   },
   rowText: { flex: 1, gap: 2 },
-  title: { fontSize: 16, fontWeight: '600', color: colors.text },
-  subtitle: { fontSize: 13, color: colors.muted },
-  away: { fontSize: 13, color: colors.muted, fontVariant: ['tabular-nums'] },
-  separator: { height: StyleSheet.hairlineWidth, backgroundColor: colors.separator, marginHorizontal: 16 },
-  error: { paddingHorizontal: 16, paddingVertical: 12, fontSize: 15, color: colors.muted },
-});
+  title: { fontSize: 16, fontWeight: '600', color: c.text },
+  subtitle: { fontSize: 13, color: c.muted },
+  away: { fontSize: 13, color: c.muted, fontVariant: ['tabular-nums'] },
+  separator: { height: StyleSheet.hairlineWidth, backgroundColor: c.separator, marginHorizontal: 16 },
+  error: { paddingHorizontal: 16, paddingVertical: 12, fontSize: 15, color: c.muted },
+}));

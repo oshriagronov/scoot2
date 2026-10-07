@@ -7,7 +7,7 @@ import type { TrackState } from '../navigation/tracker';
 import type { Route } from '../routing/router';
 import { Glass } from './Glass';
 import { useClock } from './useClock';
-import { colors, MODE_STYLE, RIDE_DAY, RIDE_NIGHT, turnIcon, type RidePalette } from './theme';
+import { LIGHT, MODE_STYLE, RIDE_DAY, RIDE_NIGHT, turnIcon, type RidePalette } from './theme';
 
 interface BannerProps {
   instructions: Instruction[];
@@ -22,7 +22,7 @@ export function ManeuverBanner({ instructions, track, rerouting, topInset }: Ban
   const { p, styles } = useRideStyle();
   const index = track?.nextIndex ?? 1;
   const next = instructions[index] ?? instructions[instructions.length - 1];
-  const after = instructions[index + 1];
+  const upcoming = instructions.slice(index + 1, index + 1 + UPCOMING_COUNT);
   const dist = track?.distanceToNext ?? next?.dist ?? 0;
   const mode = track ? currentMode(instructions, index) : instructions[0]?.mode;
 
@@ -48,7 +48,7 @@ export function ManeuverBanner({ instructions, track, rerouting, topInset }: Ban
           </Text>
         </View>
       </View>
-      {(mode || (after && after.type !== 'arrive')) && (
+      {(mode || upcoming.length > 0) && (
         <>
           <View style={styles.divider} />
           <View style={[styles.bannerFooter, dir.row]}>
@@ -58,10 +58,21 @@ export function ManeuverBanner({ instructions, track, rerouting, topInset }: Ban
                 <Text style={styles.modeChipText}>{t.ride.now(t.modes[mode])}</Text>
               </View>
             )}
-            {after && after.type !== 'arrive' && (
-              <Text style={[styles.then, dir.text]} numberOfLines={1}>
-                {t.ride.then(instructionText(after, lang))}
-              </Text>
+            {upcoming.length > 0 && (
+              <View
+                style={[styles.upcoming, dir.row]}
+                accessible
+                accessibilityLabel={t.ride.then(upcoming.map((u) => instructionText(u, lang)).join(', '))}
+              >
+                {upcoming.map((u, i) => (
+                  <View key={u.pointIndex} style={[styles.upcomingItem, dir.row]}>
+                    <MaterialCommunityIcons name={turnIcon(u.type, u.angle)} size={22} color={p.text} />
+                    <Text style={styles.upcomingDistance}>
+                      {distance(u.dist - (i === 0 ? next.dist : upcoming[i - 1].dist))}
+                    </Text>
+                  </View>
+                ))}
+              </View>
             )}
           </View>
         </>
@@ -69,6 +80,9 @@ export function ManeuverBanner({ instructions, track, rerouting, topInset }: Ban
     </Glass>
   );
 }
+
+/** How many maneuvers after the next one the banner previews. */
+const UPCOMING_COUNT = 2;
 
 /** Mode in effect before the instruction at `nextIndex`. */
 function currentMode(instructions: Instruction[], nextIndex: number) {
@@ -84,6 +98,8 @@ interface FooterProps {
   track: TrackState | null;
   muted: boolean;
   following: boolean;
+  /** Current speed in km/h, or null until it is known. */
+  speed: number | null;
   bottomInset: number;
   onToggleMute: () => void;
   onRecenter: () => void;
@@ -98,6 +114,7 @@ export function NavigationFooter({
   track,
   muted,
   following,
+  speed,
   bottomInset,
   onToggleMute,
   onRecenter,
@@ -114,18 +131,21 @@ export function NavigationFooter({
 
   return (
     <View style={[styles.footer, { bottom: Math.max(bottomInset - 16, 12) }]}>
-      {!following && (
-        <Pressable
-          style={({ pressed }) => [dir.rtl ? styles.alignLeft : styles.alignRight, pressed && styles.pressed]}
-          onPress={onRecenter}
-          accessibilityLabel={t.ride.a11yRecenter}
-        >
-          <Glass variant={p.glass} interactive style={[styles.recenter, dir.row]}>
-            <MaterialCommunityIcons name="navigation-variant" size={18} color={colors.accent} />
-            <Text style={styles.recenterText}>{t.ride.recenter}</Text>
-          </Glass>
-        </Pressable>
-      )}
+      <View style={[styles.footerTop, dir.row]}>
+        <Speedometer kmh={speed} />
+        {!following && (
+          <Pressable
+            style={({ pressed }) => pressed && styles.pressed}
+            onPress={onRecenter}
+            accessibilityLabel={t.ride.a11yRecenter}
+          >
+            <Glass variant={p.glass} interactive style={[styles.recenter, dir.row]}>
+              <MaterialCommunityIcons name="navigation-variant" size={18} color={LIGHT.accent} />
+              <Text style={styles.recenterText}>{t.ride.recenter}</Text>
+            </Glass>
+          </Pressable>
+        )}
+      </View>
       <Glass variant={p.glass} style={styles.footerBar}>
         {lockedScreenOff && (
           <Pressable style={[styles.notice, dir.row]} onPress={() => Linking.openSettings()}>
@@ -166,7 +186,22 @@ export function NavigationFooter({
   );
 }
 
-/** Day or night riding style, following the phone's appearance. */
+/** Live speed measured by the phone's GPS. */
+function Speedometer({ kmh }: { kmh: number | null }) {
+  const { t } = useStrings();
+  const { p, styles } = useRideStyle();
+  const value = kmh == null ? null : Math.round(kmh);
+  return (
+    <View accessible accessibilityLabel={value == null ? undefined : t.ride.a11ySpeed(value)}>
+      <Glass variant={p.glass} style={styles.speedometer}>
+        <Text style={styles.speedValue}>{value ?? '–'}</Text>
+        <Text style={styles.speedUnit}>{t.ride.speedUnit}</Text>
+      </Glass>
+    </View>
+  );
+}
+
+/** Day or night riding style, following the app's appearance. */
 function useRideStyle() {
   return useColorScheme() === 'dark' ? NIGHT : DAY;
 }
@@ -205,8 +240,21 @@ function createStyles(p: RidePalette) {
   },
   modeDot: { width: 8, height: 8, borderRadius: 4 },
   modeChipText: { color: p.text, fontWeight: '600', fontSize: 13 },
-  then: { flex: 1, color: p.muted, fontSize: 13 },
+  upcoming: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 14, overflow: 'hidden' },
+  upcomingItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  upcomingDistance: { color: p.secondary, fontSize: 15, fontWeight: '600', fontVariant: ['tabular-nums'] },
   footer: { position: 'absolute', left: 10, right: 10, gap: 10 },
+  footerTop: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' },
+  speedometer: { width: 76, height: 76, borderRadius: 38, alignItems: 'center', justifyContent: 'center' },
+  speedValue: {
+    color: p.text,
+    fontSize: 30,
+    fontWeight: '700',
+    letterSpacing: -0.8,
+    lineHeight: 33,
+    fontVariant: ['tabular-nums'],
+  },
+  speedUnit: { color: p.muted, fontSize: 11, fontWeight: '600' },
   footerBar: { borderRadius: 40, padding: 12, gap: 10 },
   footerRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   notice: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 8, paddingTop: 4 },
@@ -223,7 +271,7 @@ function createStyles(p: RidePalette) {
     height: 56,
     paddingHorizontal: 26,
     borderRadius: 28,
-    backgroundColor: colors.danger,
+    backgroundColor: p.danger,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -233,8 +281,6 @@ function createStyles(p: RidePalette) {
   remaining: { fontSize: 14, color: p.muted, marginTop: 1, fontVariant: ['tabular-nums'] },
   arrived: { fontSize: 20, fontWeight: '600', color: p.text },
   pressed: { transform: [{ scale: 0.96 }] },
-  alignLeft: { alignSelf: 'flex-start' },
-  alignRight: { alignSelf: 'flex-end' },
   recenter: {
     flexDirection: 'row',
     alignItems: 'center',

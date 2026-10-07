@@ -1,6 +1,7 @@
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { instructionText, PHRASES } from '../i18n/phrases';
+import { CRUISE_SPEED_KMH } from '../routing/cost';
 import type { LatLng } from '../routing/geo';
 import { Router, RoutingError, type Route } from '../routing/router';
 import type { Place } from '../services/geocode';
@@ -65,7 +66,8 @@ export function useNavigation(settings: Settings) {
       const r = await router.plan(
         from,
         to,
-        { profile: s.profile, cruiseSpeed: s.cruiseSpeed, strictUnknown: s.strictUnknown },
+        // Main roads with no speed limit in the map data are treated as above 50 km/h: the cautious guess.
+        { profile: s.profile, cruiseSpeed: CRUISE_SPEED_KMH, strictUnknown: true },
         controller.signal,
       );
       if (controller.signal.aborted) return null;
@@ -169,12 +171,12 @@ export function useNavigation(settings: Settings) {
   // Re-plan when routing preferences change while previewing a route.
   const lastPlanKey = useRef('');
   useEffect(() => {
-    const key = `${settings.profile}|${settings.strictUnknown}|${settings.cruiseSpeed}`;
+    const key = settings.profile;
     if (lastPlanKey.current && key !== lastPlanKey.current && destination && route && !navigating) {
       plan(route.from, destination.location);
     }
     lastPlanKey.current = key;
-  }, [settings.profile, settings.strictUnknown, settings.cruiseSpeed, destination, route, navigating, plan]);
+  }, [settings.profile, destination, route, navigating, plan]);
 
   useEffect(() => () => stop(), [stop]);
 

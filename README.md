@@ -17,7 +17,7 @@ Motorways, steps, and anything tagged as closed to bikes are never used.
   <img src="docs/screenshots/settings.jpg" width="16%" alt="Settings">
 </p>
 
-The interface uses iOS Liquid Glass (`expo-glass-effect`) for everything that floats over the map: neutral ink and white surfaces, with color kept for meaning (your position, the type of each route section, ending a ride, cautions). The riding screen follows the phone's appearance: light glass over the normal map, or a dark map with night glass when the phone is in dark mode. On Android and older iOS versions the same surfaces are drawn as translucent panels.
+The interface uses iOS Liquid Glass (`expo-glass-effect`) for everything that floats over the map: neutral ink and white surfaces, with color kept for meaning (your position, the type of each route section, ending a ride, cautions). The whole app has a light and a dark appearance (**Settings → Appearance**: automatic, light or dark); dark mode uses a dark map and night glass. On Android and older iOS versions the same surfaces are drawn as translucent panels.
 
 Built with Expo (SDK 57) and React Native. The map is [MapLibre](https://maplibre.org) with free OpenStreetMap map tiles from [OpenFreeMap](https://openfreemap.org): no account, no API key, the same map on iPhone and Android. The route is computed on the phone, from OpenStreetMap road data:
 
@@ -73,10 +73,11 @@ npx expo lint
 | Place search (Photon, Nominatim) and pin naming | `src/services/geocode.ts`, `src/services/photon.ts` |
 | Turn-by-turn instructions, including roundabouts | `src/navigation/instructions.ts` |
 | Live progress, voice timing, off-route detection | `src/navigation/tracker.ts` |
+| Speedometer (GPS speed while riding) | `src/navigation/speedometer.ts` |
 | Spoken phrases (Hebrew and English) | `src/i18n/phrases.ts` |
 | Screen text and right-to-left layout (Hebrew and English) | `src/i18n/strings.ts` |
 | Map (MapLibre + OpenFreeMap), route drawing, camera | `src/components/RouteMap.tsx` |
-| Colors, glass surfaces and shared controls | `src/components/theme.ts`, `src/components/Glass.tsx`, `src/components/controls.tsx` |
+| Light and dark colors, glass surfaces and shared controls | `src/components/theme.ts`, `src/components/Glass.tsx`, `src/components/controls.tsx` |
 | Location while locked (background task), voice audio session | `src/navigation/backgroundLocation.ts`, `src/navigation/voice.ts` |
 | Screens | `src/app/index.tsx` (map), `src/app/settings.tsx` |
 
@@ -87,7 +88,7 @@ On a road above 50 km/h, the app finds the sidewalk in one of two ways:
 
 Unnamed bike lanes and sidewalks take their name from the road beside them, so the voice says "the bike lane along Ibn Gabirol".
 
-**Strict speed limits** (on by default) treats primary roads with no speed tag as above 50 km/h. The route summary warns when part of the route uses an assumed speed limit.
+Primary roads with no speed tag are treated as above 50 km/h (the cautious guess: no riding on the road, sidewalk allowed beside it). The route summary warns when part of the route uses an assumed speed limit.
 
 ## Before production
 

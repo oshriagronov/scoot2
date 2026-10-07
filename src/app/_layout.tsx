@@ -12,7 +12,7 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <SettingsProvider>
-        <StatusBar style="dark" />
+        <StatusBar style="auto" />
         <Stack>
           <Stack.Screen name="index" options={{ headerShown: false }} />
           <Stack.Screen name="settings" options={{ presentation: 'modal', headerShown: false }} />

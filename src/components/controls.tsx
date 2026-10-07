@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import { Pressable, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import type { Direction } from '../i18n/strings';
 import { Glass, type GlassVariant } from './Glass';
-import { colors } from './theme';
+import { themed } from './theme';
 
 /** Round glass button for floating map controls. */
 export function GlassButton({
@@ -20,6 +20,7 @@ export function GlassButton({
   style?: StyleProp<ViewStyle>;
   children: ReactNode;
 }) {
+  const { styles } = useStyles();
   return (
     <Pressable
       onPress={onPress}
@@ -39,7 +40,7 @@ export function GlassButton({
   );
 }
 
-/** Pill-shaped choice between a few options; the chosen one sits on a raised white pill. */
+/** Pill-shaped choice between a few options; the chosen one sits on a raised pill. */
 export function Segmented<T extends string | number>({
   options,
   value,
@@ -51,6 +52,7 @@ export function Segmented<T extends string | number>({
   onChange: (v: T) => void;
   dir: Direction;
 }) {
+  const { styles } = useStyles();
   return (
     <View style={[styles.segmented, dir.row]}>
       {options.map((o) => {
@@ -73,19 +75,19 @@ export function Segmented<T extends string | number>({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themed((c) => ({
   pressed: { transform: [{ scale: 0.96 }] },
   round: { alignItems: 'center', justifyContent: 'center' },
-  segmented: { flexDirection: 'row', backgroundColor: colors.fill, borderRadius: 20, padding: 3 },
+  segmented: { flexDirection: 'row', backgroundColor: c.fill, borderRadius: 20, padding: 3 },
   segment: { flex: 1, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
   segmentActive: {
-    backgroundColor: colors.surface,
+    backgroundColor: c.raised,
     shadowColor: '#000',
     shadowOpacity: 0.1,
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 2 },
     elevation: 2,
   },
-  segmentText: { fontSize: 14, fontWeight: '500', color: colors.secondary },
-  segmentTextActive: { fontWeight: '600', color: colors.ink },
-});
+  segmentText: { fontSize: 14, fontWeight: '500', color: c.secondary },
+  segmentTextActive: { fontWeight: '600', color: c.ink },
+}));

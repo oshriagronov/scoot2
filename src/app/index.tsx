@@ -2,7 +2,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
-import { Keyboard, Linking, Pressable, StyleSheet, Text, useColorScheme, View } from 'react-native';
+import { Keyboard, Linking, Pressable, Text, useColorScheme, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GlassButton } from '../components/controls';
 import { Glass } from '../components/Glass';
@@ -10,12 +10,14 @@ import { ManeuverBanner, NavigationFooter } from '../components/NavigationHUD';
 import { RoutePanel } from '../components/RoutePanel';
 import { RouteMap, type RouteMapHandle } from '../components/RouteMap';
 import { SearchBar } from '../components/SearchBar';
-import { colors } from '../components/theme';
+import { themed } from '../components/theme';
 import { useStrings } from '../i18n/strings';
 import { useBackgroundLocation } from '../navigation/backgroundLocation';
 import { useDeviceLocation } from '../navigation/useDeviceLocation';
+import { useSpeedometer } from '../navigation/speedometer';
 import { useNavigation } from '../navigation/useNavigation';
 import { useSimulatedRide } from '../navigation/useSimulatedRide';
+import { CRUISE_SPEED_KMH } from '../routing/cost';
 import { bearing, type LatLng } from '../routing/geo';
 import { reverseGeocode, type Place } from '../services/geocode';
 import { useSettings } from '../state/settings';
@@ -27,6 +29,7 @@ export default function MapScreen() {
   const { settings, update } = useSettings();
   const insets = useSafeAreaInsets();
   const darkMode = useColorScheme() === 'dark';
+  const { c, styles } = useStyles();
   const mapRef = useRef<RouteMapHandle>(null);
   const nav = useNavigation(settings);
 
@@ -39,8 +42,9 @@ export default function MapScreen() {
   });
   const backgroundActive = background.mode === 'background';
   const device = useDeviceLocation(!simulating && !backgroundActive, nav.navigating);
-  const simFix = useSimulatedRide(nav.route, simulating, settings.cruiseSpeed);
+  const simFix = useSimulatedRide(nav.route, simulating, CRUISE_SPEED_KMH);
   const fix = simulating ? simFix : backgroundActive ? (background.fix ?? device.fix) : device.fix;
+  const speed = useSpeedometer(nav.navigating ? fix : null);
   const lat = fix?.latitude;
   const lon = fix?.longitude;
   const here = useMemo<LatLng | null>(
@@ -115,7 +119,7 @@ export default function MapScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar style={nav.navigating && darkMode ? 'light' : 'dark'} />
+      <StatusBar style={darkMode ? 'light' : 'dark'} />
       <RouteMap
         ref={mapRef}
         route={nav.route}
@@ -139,6 +143,7 @@ export default function MapScreen() {
             track={nav.track}
             muted={!settings.voiceEnabled}
             following={following}
+            speed={speed}
             bottomInset={insets.bottom}
             onToggleMute={() => update({ voiceEnabled: !settings.voiceEnabled })}
             onRecenter={recenter}
@@ -160,7 +165,7 @@ export default function MapScreen() {
               {device.permission === 'denied' && (
                 <Pressable onPress={() => Linking.openSettings()} style={styles.permissionWrap}>
                   <Glass style={[styles.permission, dir.row]}>
-                    <MaterialCommunityIcons name="map-marker-off-outline" size={18} color={colors.cautionIcon} />
+                    <MaterialCommunityIcons name="map-marker-off-outline" size={18} color={c.cautionIcon} />
                     <Text style={[styles.permissionText, dir.text]}>{t.map.locationOff}</Text>
                   </Glass>
                 </Pressable>
@@ -175,7 +180,7 @@ export default function MapScreen() {
               accessibilityLabel={t.map.a11yMyLocation}
               style={[styles.fab, { bottom: insets.bottom + 28 }, dir.rtl ? { left: 16 } : { right: 16 }]}
             >
-              <MaterialCommunityIcons name="near-me" size={24} color={colors.accent} />
+              <MaterialCommunityIcons name="near-me" size={24} color={c.accent} />
             </GlassButton>
           )}
 
@@ -215,8 +220,8 @@ export default function MapScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#EDECE8' },
+const useStyles = themed((c) => ({
+  container: { flex: 1, backgroundColor: c.mapGround },
   top: { position: 'absolute', left: 0, right: 0, gap: 10 },
   permissionWrap: { marginHorizontal: 16 },
   permission: {
@@ -227,17 +232,17 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 18,
   },
-  permissionText: { flex: 1, color: colors.caution, fontSize: 14, lineHeight: 19 },
+  permissionText: { flex: 1, color: c.caution, fontSize: 14, lineHeight: 19 },
   fab: { position: 'absolute' },
   attribution: {
     position: 'absolute',
     fontSize: 10.5,
-    color: colors.secondary,
-    backgroundColor: 'rgba(255,255,255,0.78)',
+    color: c.secondary,
+    backgroundColor: c.attributionBg,
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 8,
     overflow: 'hidden',
   },
   attributionNight: { color: 'rgba(255,255,255,0.55)', backgroundColor: 'transparent', paddingHorizontal: 0 },
-});
+}));

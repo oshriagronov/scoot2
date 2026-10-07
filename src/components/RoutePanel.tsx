@@ -1,5 +1,5 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { useStrings } from '../i18n/strings';
 import type { RouteErrorCode } from '../navigation/useNavigation';
 import type { RouteProfile } from '../routing/cost';
@@ -9,7 +9,7 @@ import type { Place } from '../services/geocode';
 import { Segmented } from './controls';
 import { Glass } from './Glass';
 import { useClock } from './useClock';
-import { colors, MODE_STYLE } from './theme';
+import { MODE_STYLE, themed } from './theme';
 
 interface Props {
   destination: Place;
@@ -41,6 +41,7 @@ export function RoutePanel({
 }: Props) {
   const { t, dir, distance, duration, time, errorText } = useStrings();
   const now = useClock(15000);
+  const { c, styles } = useStyles();
   return (
     <Glass variant="thick" style={[styles.panel, { paddingBottom: Math.max(bottomInset - 8, 16) }]}>
       <View style={styles.grabber} />
@@ -57,7 +58,7 @@ export function RoutePanel({
           )}
         </View>
         <Pressable onPress={onClose} hitSlop={8} style={styles.close} accessibilityLabel={t.route.a11yClose}>
-          <MaterialCommunityIcons name="close" size={18} color={colors.secondary} />
+          <MaterialCommunityIcons name="close" size={18} color={c.secondary} />
         </Pressable>
       </View>
 
@@ -73,14 +74,14 @@ export function RoutePanel({
 
       {planning && (
         <View style={[styles.status, dir.row]}>
-          <ActivityIndicator color={colors.ink} />
+          <ActivityIndicator color={c.ink} />
           <Text style={[styles.statusText, dir.text, { flex: 1 }]}>{t.route.planning}</Text>
         </View>
       )}
 
       {!planning && error && (
         <View style={[styles.status, dir.row]}>
-          <Text style={[styles.statusText, dir.text, { color: colors.danger, flex: 1 }]}>{errorText(error)}</Text>
+          <Text style={[styles.statusText, dir.text, { color: c.danger, flex: 1 }]}>{errorText(error)}</Text>
           <Pressable onPress={onRetry} style={styles.retry}>
             <Text style={styles.retryText}>{t.route.retry}</Text>
           </Pressable>
@@ -121,7 +122,7 @@ export function RoutePanel({
 
           {route.inferredSpeedMeters > 50 && (
             <View style={[styles.warning, dir.row]}>
-              <MaterialCommunityIcons name="alert-outline" size={18} color={colors.cautionIcon} />
+              <MaterialCommunityIcons name="alert-outline" size={18} color={c.cautionIcon} />
               <Text style={[styles.warningText, dir.text]}>
                 {t.route.inferredSpeed(distance(route.inferredSpeedMeters))}
               </Text>
@@ -133,7 +134,7 @@ export function RoutePanel({
             onPress={onStart}
             accessibilityLabel={t.route.a11yStart}
           >
-            <MaterialCommunityIcons name="navigation-variant" size={22} color="#fff" />
+            <MaterialCommunityIcons name="navigation-variant" size={22} color={c.onInk} />
             <Text style={styles.startText}>{t.route.start}</Text>
           </Pressable>
         </>
@@ -142,7 +143,7 @@ export function RoutePanel({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themed((c) => ({
   panel: {
     position: 'absolute',
     left: 8,
@@ -153,32 +154,32 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     gap: 16,
   },
-  grabber: { alignSelf: 'center', width: 36, height: 5, borderRadius: 3, backgroundColor: 'rgba(60,60,67,0.22)' },
+  grabber: { alignSelf: 'center', width: 36, height: 5, borderRadius: 3, backgroundColor: c.grabber },
   header: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
-  title: { fontSize: 21, fontWeight: '700', letterSpacing: -0.2, color: colors.text },
-  subtitle: { fontSize: 14, color: colors.muted },
+  title: { fontSize: 21, fontWeight: '700', letterSpacing: -0.2, color: c.text },
+  subtitle: { fontSize: 14, color: c.muted },
   close: {
     width: 34,
     height: 34,
     borderRadius: 17,
-    backgroundColor: colors.fill,
+    backgroundColor: c.fill,
     alignItems: 'center',
     justifyContent: 'center',
   },
   status: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8 },
-  statusText: { fontSize: 15, lineHeight: 21, color: colors.muted },
-  retry: { paddingHorizontal: 16, height: 36, justifyContent: 'center', borderRadius: 18, backgroundColor: colors.fill },
-  retryText: { color: colors.ink, fontWeight: '600', fontSize: 15 },
+  statusText: { fontSize: 15, lineHeight: 21, color: c.muted },
+  retry: { paddingHorizontal: 16, height: 36, justifyContent: 'center', borderRadius: 18, backgroundColor: c.fill },
+  retryText: { color: c.ink, fontWeight: '600', fontSize: 15 },
   summary: { flexDirection: 'row', alignItems: 'baseline', gap: 10 },
-  duration: { fontSize: 38, fontWeight: '700', letterSpacing: -0.8, color: colors.text, fontVariant: ['tabular-nums'] },
-  distance: { fontSize: 16, color: colors.muted, fontVariant: ['tabular-nums'] },
+  duration: { fontSize: 38, fontWeight: '700', letterSpacing: -0.8, color: c.text, fontVariant: ['tabular-nums'] },
+  distance: { fontSize: 16, color: c.muted, fontVariant: ['tabular-nums'] },
   bar: { flexDirection: 'row', height: 6, gap: 3 },
   barPart: { borderRadius: 3 },
   legend: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 16, rowGap: 6 },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   dot: { width: 8, height: 8, borderRadius: 4 },
-  legendText: { fontSize: 13, color: colors.text },
-  legendDistance: { fontSize: 13, color: colors.muted, fontVariant: ['tabular-nums'] },
+  legendText: { fontSize: 13, color: c.text },
+  legendDistance: { fontSize: 13, color: c.muted, fontVariant: ['tabular-nums'] },
   warning: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -186,22 +187,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderRadius: 16,
-    backgroundColor: colors.cautionBg,
+    backgroundColor: c.cautionBg,
   },
-  warningText: { flex: 1, fontSize: 13, lineHeight: 18, color: colors.caution },
+  warningText: { flex: 1, fontSize: 13, lineHeight: 18, color: c.caution },
   start: {
     height: 58,
     borderRadius: 29,
-    backgroundColor: colors.ink,
+    backgroundColor: c.ink,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
-    shadowColor: colors.ink,
+    shadowColor: '#000',
     shadowOpacity: 0.25,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 6 },
   },
-  startPressed: { transform: [{ scale: 0.98 }], backgroundColor: '#26262B' },
-  startText: { color: '#fff', fontSize: 18, fontWeight: '600' },
-});
+  startPressed: { transform: [{ scale: 0.98 }], backgroundColor: c.inkPressed },
+  startText: { color: c.onInk, fontSize: 18, fontWeight: '600' },
+}));

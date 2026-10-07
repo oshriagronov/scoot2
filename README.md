@@ -43,6 +43,8 @@ npx expo run:android   # needs Android Studio
 
 After the first build, `npx expo start` is enough until native dependencies or `app.json` change.
 
+**Android test builds:** every push to `main` builds an APK (`.github/workflows/android-apk.yml`) and publishes it as the [`android-latest` pre-release](https://github.com/oshriagronov/scoot2/releases/tag/android-latest). Open that page on an Android phone, download `scoot2.apk` and install it; each new build installs over the last one. It is signed with a public test key, so it is for testing only, not for Google Play.
+
 **Guidance with the phone locked:** when you press Start, the app asks for location access "Always". With it, location updates and voice prompts continue with the screen locked or another app open. iPhone shows the blue location pill; Android shows a "Scoot2 is guiding you" notification. Without it, guidance works only while the app is on screen, and the ride screen says so.
 
 The app is in Hebrew by default, for both the screens and the voice, laid out right to left. English is available in **Settings → Language**.

@@ -74,6 +74,7 @@ The owner wants no paid infrastructure until the app earns money. Prefer static 
 ### Building and running
 
 - Expo Go can't run this app (MapLibre, background location). Use a development build: `npx expo run:ios` (needs CocoaPods) or `npx expo run:android`.
+- Android test APKs: `.github/workflows/android-apk.yml` runs `expo prebuild` and Gradle on every push to `main` (no EAS, no secrets) and replaces the `android-latest` GitHub pre-release. It is signed with the template's public debug key: testing only.
 - `plugins/withSceneLifecycle.js` adopts the UIScene life cycle that the iOS 27 SDK requires at launch; Expo SDK 57's template doesn't yet. Remove it after upgrading to SDK 58.
 - Guidance while the phone is locked uses a background location task (`src/navigation/backgroundLocation.ts`, registered from `src/app/_layout.tsx`) and needs "Always" location permission.
 - Checks before declaring work done: `npm test` (vitest), `npx tsc --noEmit`, `npx expo lint`. The `pipeline/` folder has its own `package.json` and tsconfig: `cd pipeline && npx tsc -p .`.

@@ -1,0 +1,77 @@
+# Builds an installable Android APK on every push to main and publishes it as
+# the "android-latest" pre-release, so testers always download from the same link:
+# https://github.com/<owner>/<repo>/releases/download/android-latest/scoot2.apk
+#
+# The APK is a release build (JavaScript bundled, no dev server needed) signed with
+# the debug keystore from Expo's project template. That key is public and the same
+# on every run, so each new APK installs over the previous one, but it is only fit
+# for testing, never for Google Play.
+name: Android APK
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'pipeline/**'
+      - 'docs/**'
+      - '**.md'
+      - '.github/workflows/road-tiles.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write # create the release
+
+concurrency:
+  group: android-apk
+  cancel-in-progress: true # only the newest commit matters
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate the native Android project
+        run: npx expo prebuild --platform android --no-install
+
+      # 64-bit ARM covers practically every phone from the last several years and
+      # keeps the build fast. Add armeabi-v7a (comma-separated) for old 32-bit phones.
+      - name: Build release APK
+        working-directory: android
+        run: ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a --no-daemon
+
+      - name: Rename APK
+        run: mv android/app/build/outputs/apk/release/app-release.apk scoot2.apk
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: scoot2-apk
+          path: scoot2.apk
+          retention-days: 14
+
+      - name: Publish the "android-latest" release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete android-latest --cleanup-tag --yes || true
+          gh release create android-latest scoot2.apk \
+            --target "$GITHUB_SHA" \
+            --prerelease \
+            --title "Android test build" \
+            --notes "Built from ${GITHUB_SHA::7} on $(date -u '+%Y-%m-%d %H:%M UTC'). Open this page on the phone, download scoot2.apk and install it (allow installs from your browser when Android asks)."
